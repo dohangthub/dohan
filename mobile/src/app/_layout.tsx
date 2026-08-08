@@ -1,8 +1,9 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import '../global.css';
 import { theme } from '../lib/theme';
 
 const isWeb = Platform.OS === 'web';
@@ -12,12 +13,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StatusBar style="dark" />
       {/* Sur le web : enveloppe plein écran + cadre "téléphone" centré (max-width). */}
-      <View
-        style={[
-          { flex: 1, backgroundColor: theme.bgWarm, alignItems: 'center' },
-          isWeb && StyleSheet.absoluteFillObject,
-        ]}
-      >
+      <View style={{ flex: 1, backgroundColor: theme.bgWarm, alignItems: 'center' }}>
         <View
           style={[
             { flex: 1, width: '100%', backgroundColor: theme.bg },
