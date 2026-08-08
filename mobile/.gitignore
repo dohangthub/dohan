@@ -5,7 +5,7 @@ node_modules/
 
 # Expo
 .expo/
-dist/
+# dist/  -> committé exprès (build web servi par le serveur sur Railway)
 web-build/
 expo-env.d.ts
 
