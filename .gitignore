@@ -9,10 +9,10 @@ mobile/node_modules/
 
 # --- Expo / build ---
 mobile/.expo/
-mobile/dist/
 mobile/web-build/
 mobile/.expo-shared/
 *.log
+# NB: mobile/dist EST committé (build web servi par le serveur sur Railway)
 
 # --- OS / éditeurs ---
 .DS_Store

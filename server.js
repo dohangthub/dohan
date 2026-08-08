@@ -20,7 +20,9 @@ const path = require('path');
 })();
 
 const PORT = process.env.PORT || 3000;
-const PUBLIC = path.join(__dirname, 'public');
+// Sert le build web Expo (mobile/dist) s'il existe, sinon le dossier public (dev/redirection)
+const WEB_DIST = path.join(__dirname, 'mobile', 'dist');
+const PUBLIC = fs.existsSync(path.join(WEB_DIST, 'index.html')) ? WEB_DIST : path.join(__dirname, 'public');
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SECRET_KEY;
 const ME = 'me';
@@ -377,23 +379,35 @@ async function api(req, res, url) {
   return json(res, 404, { error: 'route inconnue' });
 }
 
-// ---------- Statique ----------
-const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json' };
+// ---------- Statique (sert le build web Expo avec routage) ----------
+const MIME = {
+  '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8', '.json': 'application/json',
+  '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.png': 'image/png',
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp',
+  '.ttf': 'font/ttf', '.woff': 'font/woff', '.woff2': 'font/woff2', '.map': 'application/json',
+};
+function safe(p) {
+  const fp = path.join(PUBLIC, path.normalize(p).replace(/^(\.\.[\/\\])+/, ''));
+  return fp.startsWith(PUBLIC) && fs.existsSync(fp) && fs.statSync(fp).isFile() ? fp : null;
+}
 function serveStatic(req, res, url) {
-  let p = url.pathname === '/' ? '/index.html' : url.pathname;
-  const filePath = path.join(PUBLIC, path.normalize(p).replace(/^(\.\.[\/\\])+/, ''));
-  if (!filePath.startsWith(PUBLIC)) return json(res, 403, { error: 'forbidden' });
-  fs.readFile(filePath, (err, data) => {
-    if (err) {
-      fs.readFile(path.join(PUBLIC, 'index.html'), (e2, d2) => {
-        if (e2) return json(res, 404, { error: 'not found' });
-        res.writeHead(200, { 'Content-Type': MIME['.html'] }); res.end(d2);
-      });
-      return;
+  let p = decodeURIComponent(url.pathname);
+  if (p === '/') p = '/index.html';
+  const candidates = [p];
+  if (!path.extname(p)) {
+    candidates.push(p + '.html');                       // /feed -> feed.html
+    if (/^\/chat\/[^/]+$/.test(p)) candidates.push('/chat/[id].html'); // /chat/7 -> route dynamique
+  }
+  candidates.push('/index.html');                        // fallback SPA
+  for (const c of candidates) {
+    const fp = safe(c);
+    if (fp) {
+      res.writeHead(200, { 'Content-Type': MIME[path.extname(fp)] || 'application/octet-stream' });
+      return res.end(fs.readFileSync(fp));
     }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(filePath)] || 'application/octet-stream' });
-    res.end(data);
-  });
+  }
+  res.writeHead(404); res.end('not found');
 }
 
 const server = http.createServer(async (req, res) => {
