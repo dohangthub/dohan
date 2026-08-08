@@ -1,11 +1,18 @@
 import { Platform } from 'react-native';
 
-// L'API Node+Supabase tourne sur le port 3000.
-// - Web (Expo web) : même hôte que le navigateur.
-// - Natif (device/emulateur) : remplace par l'IP LAN de ta machine, ex http://192.168.1.10:3000
-const WEB_HOST =
-  Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-export const API_BASE = `http://${WEB_HOST}:3000`;
+// API Node+Supabase.
+// - Web sur localhost (dev) : localhost:3000
+// - Web déployé OU téléphone/natif : API Railway en ligne
+const RAILWAY = 'https://dohan-production.up.railway.app';
+function resolveBase(): string {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const h = window.location.hostname;
+    if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:3000';
+    return RAILWAY;
+  }
+  return RAILWAY; // téléphone / natif → API en ligne
+}
+export const API_BASE = resolveBase();
 
 export type User = {
   id: string;
