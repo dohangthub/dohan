@@ -4,19 +4,29 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Doxan — API</title>
-  <meta http-equiv="refresh" content="0; url=http://localhost:8081" />
   <style>
     body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #F4F1F2; color: #1B1620;
            display: grid; place-items: center; height: 100vh; margin: 0; text-align: center; }
-    a { color: #FF3E79; font-weight: 700; }
+    .card { background:#fff; padding:32px 28px; border-radius:20px; box-shadow:0 12px 40px rgba(60,20,50,.1); max-width:420px; }
+    h1 { margin:0 0 8px; }
+    a { color: #FF3E79; font-weight: 700; text-decoration:none; }
+    code { background:#F5F1F3; padding:2px 6px; border-radius:6px; font-size:13px; }
+    .muted { color:#8A828F; font-size:14px; line-height:1.5; }
   </style>
 </head>
 <body>
-  <div>
+  <div class="card">
     <h1>💘 Doxan</h1>
-    <p>Ceci est l'<b>API</b> (port 3000). La vraie app est sur&nbsp;:</p>
-    <p><a href="http://localhost:8081">http://localhost:8081</a></p>
-    <p style="color:#8A828F;font-size:13px">Redirection automatique…</p>
+    <p><b style="color:#12b886">API en ligne ✓</b></p>
+    <p class="muted">Ceci est le backend (endpoints <code>/api/…</code>).<br>L'application mobile est un projet séparé.</p>
+    <p id="local" class="muted" style="display:none">Ouverture de l'app locale…</p>
   </div>
+  <script>
+    // Redirige vers l'app locale UNIQUEMENT en développement (localhost)
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      document.getElementById('local').style.display = 'block';
+      location.href = 'http://localhost:8081';
+    }
+  </script>
 </body>
 </html>
