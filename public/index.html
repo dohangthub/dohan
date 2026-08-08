@@ -2,137 +2,21 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Doxan — Trouve ton crush à Dakar</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Doxan — API</title>
+  <meta http-equiv="refresh" content="0; url=http://localhost:8081" />
+  <style>
+    body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #F4F1F2; color: #1B1620;
+           display: grid; place-items: center; height: 100vh; margin: 0; text-align: center; }
+    a { color: #FF3E79; font-weight: 700; }
+  </style>
 </head>
 <body>
-  <div id="app" class="phone">
-    <!-- Header -->
-    <header class="topbar">
-      <div class="brand">Dox<span>an</span></div>
-      <div class="top-actions">
-        <button id="premiumBtn" class="chip chip-gold" title="Passer Premium">👑 <span id="premiumLabel">Premium</span></button>
-        <button id="profileBtn" class="avatar-mini" title="Mon profil"></button>
-      </div>
-    </header>
-
-    <!-- Screens -->
-    <main id="screens">
-      <!-- Découverte / swipe -->
-      <section id="screen-discover" class="screen active">
-        <div class="likes-banner" id="likesBanner"></div>
-        <div id="deck" class="deck"></div>
-        <div class="swipe-actions">
-          <button class="sbtn pass" data-act="pass" title="Passer">✕</button>
-          <button class="sbtn crush" data-act="crush" title="Super crush">⭐</button>
-          <button class="sbtn like" data-act="like" title="J'aime">♥</button>
-        </div>
-      </section>
-
-      <!-- Qui t'a liké -->
-      <section id="screen-likes" class="screen">
-        <h2 class="screen-title">Qui t'a liké 💘</h2>
-        <div id="likesGrid" class="grid"></div>
-      </section>
-
-      <!-- Matchs / messages -->
-      <section id="screen-matches" class="screen">
-        <h2 class="screen-title">Tes matchs 🔥</h2>
-        <div id="matchesList" class="matches"></div>
-      </section>
-
-      <!-- Chat -->
-      <section id="screen-chat" class="screen chat-screen">
-        <div class="chat-head">
-          <button id="chatBack" class="link-btn">‹</button>
-          <div class="chat-peer">
-            <div id="chatAvatar" class="avatar-sm"></div>
-            <div>
-              <div id="chatName" class="chat-name"></div>
-              <div id="chatCity" class="muted small"></div>
-            </div>
-          </div>
-        </div>
-        <div id="chatBody" class="chat-body"></div>
-        <div id="iceRow" class="ice-row"></div>
-        <form id="chatForm" class="chat-input">
-          <input id="chatText" placeholder="Écris un message..." autocomplete="off" />
-          <button class="send">➤</button>
-        </form>
-      </section>
-
-      <!-- Profil -->
-      <section id="screen-profile" class="screen">
-        <h2 class="screen-title">Mon profil</h2>
-        <div class="profile-card">
-          <div id="myAvatar" class="avatar-lg"></div>
-          <label>Prénom<input id="pName" /></label>
-          <label>Âge<input id="pAge" type="number" min="18" max="80" /></label>
-          <label>Ville
-            <select id="pCity"></select>
-          </label>
-          <label>Bio<textarea id="pBio" maxlength="200" rows="3"></textarea></label>
-          <label>Emoji vibe
-            <div id="emojiPick" class="emoji-pick"></div>
-          </label>
-          <button id="saveProfile" class="primary">Enregistrer</button>
-          <button id="resetBtn" class="ghost">Réinitialiser la démo</button>
-        </div>
-      </section>
-    </main>
-
-    <!-- Bottom nav -->
-    <nav class="tabbar">
-      <button class="tab active" data-screen="discover">🔥<span>Découvrir</span></button>
-      <button class="tab" data-screen="likes">💘<span>Likes</span></button>
-      <button class="tab" data-screen="matches">💬<span>Matchs</span></button>
-      <button class="tab" data-screen="profile">👤<span>Profil</span></button>
-    </nav>
+  <div>
+    <h1>💘 Doxan</h1>
+    <p>Ceci est l'<b>API</b> (port 3000). La vraie app est sur&nbsp;:</p>
+    <p><a href="http://localhost:8081">http://localhost:8081</a></p>
+    <p style="color:#8A828F;font-size:13px">Redirection automatique…</p>
   </div>
-
-  <!-- Match modal -->
-  <div id="matchModal" class="modal hidden">
-    <div class="modal-inner match-inner">
-      <div class="boom">C'est un match ! 🎉</div>
-      <div class="match-avatars">
-        <div id="matchMe" class="avatar-md"></div>
-        <div class="heart">💛</div>
-        <div id="matchThem" class="avatar-md"></div>
-      </div>
-      <p id="matchText" class="muted"></p>
-      <button id="matchChat" class="primary">Envoyer un message</button>
-      <button id="matchClose" class="ghost">Continuer à swiper</button>
-    </div>
-  </div>
-
-  <!-- Premium modal -->
-  <div id="premiumModal" class="modal hidden">
-    <div class="modal-inner">
-      <button id="premClose" class="modal-x">✕</button>
-      <div class="prem-head">👑 Passe en <b>Doxan Gold</b></div>
-      <ul class="prem-list">
-        <li>💘 Vois <b>qui t'a liké</b></li>
-        <li>♾️ Likes <b>illimités</b></li>
-        <li>🚀 <b>Boost</b> de visibilité</li>
-        <li>⭐ Super crush illimités</li>
-        <li>🕵️ Mode <b>incognito</b></li>
-      </ul>
-      <div class="pay-label">Payer avec</div>
-      <div class="pay-methods">
-        <button class="pay wave" data-pay="wave">Wave</button>
-        <button class="pay om" data-pay="om">Orange Money</button>
-        <button class="pay free" data-pay="free">Free Money</button>
-      </div>
-      <div class="plans">
-        <button class="plan" data-plan="week"><b>Semaine</b><span>1 000 FCFA</span></button>
-        <button class="plan best" data-plan="month"><span class="tag">Populaire</span><b>Mois</b><span>3 000 FCFA</span></button>
-      </div>
-      <p class="tiny muted">Démo — aucun paiement réel n'est effectué.</p>
-    </div>
-  </div>
-
-  <div id="toast" class="toast hidden"></div>
-  <script src="/app.js"></script>
 </body>
 </html>

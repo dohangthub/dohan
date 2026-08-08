@@ -4,43 +4,57 @@ import { Platform } from 'react-native';
 
 import { theme } from '../../lib/theme';
 
+const isWeb = Platform.OS === 'web';
+
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.primary,
-        tabBarInactiveTintColor: '#BEB6C0',
+        tabBarInactiveTintColor: '#9A929B',
         tabBarShowLabel: true,
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '700', marginTop: 2 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: 3 },
+        tabBarIconStyle: { marginTop: 4 },
         tabBarStyle: {
           backgroundColor: '#fff',
+          borderTopWidth: 1,
           borderTopColor: theme.line,
-          height: Platform.OS === 'web' ? 64 : 84,
+          height: isWeb ? 78 : 90,
           paddingTop: 8,
-          paddingBottom: Platform.OS === 'web' ? 8 : 28,
+          paddingBottom: isWeb ? 16 : 30,
+          // séparation/ombre au-dessus de la barre
+          ...(isWeb
+            ? ({ boxShadow: '0 -4px 24px rgba(60,20,50,0.08)' } as any)
+            : {
+                shadowColor: '#3A1330',
+                shadowOpacity: 0.08,
+                shadowRadius: 16,
+                shadowOffset: { width: 0, height: -4 },
+                elevation: 14,
+              }),
         },
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Home', tabBarIcon: ({ color, size }) => <Ionicons name="flame" size={size} color={color} /> }}
+        options={{ title: 'Accueil', tabBarIcon: ({ color, size }) => <Ionicons name="flame" size={size} color={color} /> }}
       />
       <Tabs.Screen
         name="foryou"
-        options={{ title: 'For You', tabBarIcon: ({ color, size }) => <Ionicons name="compass" size={size} color={color} /> }}
+        options={{ title: 'Pour toi', tabBarIcon: ({ color, size }) => <Ionicons name="compass" size={size} color={color} /> }}
       />
       <Tabs.Screen
         name="likes"
-        options={{ title: 'Like You', tabBarIcon: ({ color, size }) => <Ionicons name="heart" size={size} color={color} /> }}
+        options={{ title: 'Likes', tabBarIcon: ({ color, size }) => <Ionicons name="heart" size={size} color={color} /> }}
       />
       <Tabs.Screen
         name="chat"
-        options={{ title: 'Chat', tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble" size={size} color={color} /> }}
+        options={{ title: 'Messages', tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble" size={size} color={color} /> }}
       />
       <Tabs.Screen
         name="account"
-        options={{ title: 'Account', tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} /> }}
+        options={{ title: 'Profil', tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} /> }}
       />
     </Tabs>
   );
