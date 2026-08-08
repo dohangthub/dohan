@@ -2,11 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chip, PremiumPill, ScreenTitle } from '../../components/ui';
-import { AppState, User, api, kmAway } from '../../lib/api';
+import { AppState, User, api, kmAway, photoUrl } from '../../lib/api';
 import { shadow, theme } from '../../lib/theme';
 
 const COL_W = (Math.min(Dimensions.get('window').width, 440) - 18 * 2 - 12) / 2;
@@ -103,10 +103,18 @@ export default function Likes() {
 }
 
 function RealTile({ user }: { user: User }) {
+  const [err, setErr] = useState(false);
+  const uri = photoUrl(user, 400, 520);
   return (
     <View style={styles.tile}>
-      <LinearGradient colors={user.grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-      <Text style={styles.tileEmoji}>{user.emoji}</Text>
+      {uri && !err ? (
+        <Image source={{ uri }} onError={() => setErr(true)} resizeMode="cover" style={StyleSheet.absoluteFill} />
+      ) : (
+        <>
+          <LinearGradient colors={user.grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+          <Text style={styles.tileEmoji}>{user.emoji}</Text>
+        </>
+      )}
       <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={StyleSheet.absoluteFill} />
       <View style={styles.tileInfo}>
         <Text style={styles.tileName}>{user.name}, {user.age}</Text>

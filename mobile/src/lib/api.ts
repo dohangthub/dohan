@@ -62,6 +62,31 @@ export const api = {
   reset: () => req('/api/reset', { method: 'POST', body: '{}' }),
 };
 
+// Photos réelles (Unsplash) — mappées par profil, genre respecté.
+// Repli sur dégradé+emoji si absent/échec (géré dans les composants).
+const PHOTOS: Record<string, string> = {
+  // Femmes
+  u1: '1494790108377-be9c29b29330',
+  u2: '1534528741775-53994a69daeb',
+  u3: '1544005313-94ddf0286df2',
+  u4: '1517841905240-472988babdf9',
+  u5: '1531123897727-8f129e1688ce',
+  u6: '1524250502761-1ac6f2e30d43',
+  u7: '1489424731084-a5d8b219a5bb',
+  u8: '1508214751196-bcfd4ca60f91',
+  // Hommes
+  u9: '1507003211169-0a1dd7228f2d',
+  u10: '1506794778202-cad84cf45f1d',
+  u11: '1519085360753-af0119f7cbe7',
+  u12: '1508341591423-4347099e1f19',
+};
+
+export function photoUrl(u: User, w = 600, h = 800): string | null {
+  const id = u && PHOTOS[u.id];
+  if (!id) return null;
+  return `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&crop=faces&q=80`;
+}
+
 // Helpers d'affichage (données non fournies par l'API démo)
 export function kmAway(id: string) {
   const n = parseInt(id.replace(/\D/g, ''), 10) || 1;

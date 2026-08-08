@@ -1,13 +1,25 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ReactNode } from 'react';
-import { StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { ReactNode, useState } from 'react';
+import { Image, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
-import { User, kmAway, commonInterests } from '../lib/api';
+import { User, kmAway, commonInterests, photoUrl } from '../lib/api';
 import { shadow, shadowSoft, theme } from '../lib/theme';
 
-/* ---------- Avatar rond (dégradé + emoji) ---------- */
+/* ---------- Avatar rond (photo réelle + repli dégradé/emoji) ---------- */
 export function Avatar({ user, size = 52 }: { user: User; size?: number }) {
+  const [err, setErr] = useState(false);
+  const uri = photoUrl(user, 200, 200);
+  if (uri && !err) {
+    return (
+      <Image
+        source={{ uri }}
+        onError={() => setErr(true)}
+        resizeMode="cover"
+        style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: theme.line }}
+      />
+    );
+  }
   return (
     <LinearGradient
       colors={user?.grad || theme.pinkGrad}
@@ -64,10 +76,23 @@ export function PhotoCard({
   compact?: boolean;
   children?: ReactNode;
 }) {
+  const [err, setErr] = useState(false);
+  const uri = photoUrl(user, 700, 950);
   return (
     <View style={[styles.photoCard, style]}>
-      <LinearGradient colors={user.grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-      <Text style={[styles.photoEmoji, compact && { fontSize: 72 }]}>{user.emoji}</Text>
+      {uri && !err ? (
+        <Image
+          source={{ uri }}
+          onError={() => setErr(true)}
+          resizeMode="cover"
+          style={StyleSheet.absoluteFill}
+        />
+      ) : (
+        <>
+          <LinearGradient colors={user.grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+          <Text style={[styles.photoEmoji, compact && { fontSize: 72 }]}>{user.emoji}</Text>
+        </>
+      )}
       <LinearGradient colors={['transparent', 'rgba(0,0,0,0.05)', 'rgba(0,0,0,0.72)']} style={StyleSheet.absoluteFill} />
 
       {badge ? (
