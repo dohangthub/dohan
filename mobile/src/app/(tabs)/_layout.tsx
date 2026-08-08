@@ -41,8 +41,8 @@ export default function TabsLayout() {
         options={{ title: 'Accueil', tabBarIcon: ({ color, size }) => <Ionicons name="flame" size={size} color={color} /> }}
       />
       <Tabs.Screen
-        name="foryou"
-        options={{ title: 'Pour toi', tabBarIcon: ({ color, size }) => <Ionicons name="compass" size={size} color={color} /> }}
+        name="feed"
+        options={{ title: 'Feed', tabBarIcon: ({ color, size }) => <Ionicons name="newspaper" size={size} color={color} /> }}
       />
       <Tabs.Screen
         name="likes"

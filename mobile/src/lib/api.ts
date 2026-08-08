@@ -40,6 +40,16 @@ export type AppState = {
 
 export type ChatMsg = { from: 'me' | 'them'; text: string };
 
+export type Post = {
+  id: string;
+  kind: 'photo' | 'text';
+  body: string;
+  photo: string | null;
+  likes: number;
+  author: User;
+  createdAt: string;
+};
+
 async function req(path: string, opts?: RequestInit) {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -57,6 +67,13 @@ export const api = {
   send: (matchId: string, text: string): Promise<{ messages: ChatMsg[] }> =>
     req('/api/messages', { method: 'POST', body: JSON.stringify({ matchId, text }) }),
   premium: () => req('/api/premium', { method: 'POST', body: '{}' }),
+  feed: (): Promise<{ posts: Post[] }> => req('/api/feed'),
+  createPost: (body: string, photo?: string | null) =>
+    req('/api/post', { method: 'POST', body: JSON.stringify({ kind: photo ? 'photo' : 'text', body, photo }) }),
+  likePost: (postId: string) =>
+    req('/api/feed/like', { method: 'POST', body: JSON.stringify({ postId }) }),
+  dm: (authorId: string): Promise<{ matchId: string }> =>
+    req('/api/dm', { method: 'POST', body: JSON.stringify({ authorId }) }),
   saveProfile: (p: Partial<User>) =>
     req('/api/profile', { method: 'POST', body: JSON.stringify(p) }),
   reset: () => req('/api/reset', { method: 'POST', body: '{}' }),

@@ -90,7 +90,43 @@ function seedRows() {
   return [me, ...cands];
 }
 
+// Photos Unsplash (mêmes ids que côté app) pour construire les images des posts
+const PHOTOS = {
+  u1: '1494790108377-be9c29b29330', u2: '1534528741775-53994a69daeb',
+  u3: '1544005313-94ddf0286df2', u4: '1517841905240-472988babdf9',
+  u5: '1531123897727-8f129e1688ce', u6: '1524250502761-1ac6f2e30d43',
+  u7: '1489424731084-a5d8b219a5bb', u8: '1508214751196-bcfd4ca60f91',
+  u9: '1507003211169-0a1dd7228f2d', u10: '1506794778202-cad84cf45f1d',
+  u11: '1519085360753-af0119f7cbe7', u12: '1508341591423-4347099e1f19',
+};
+function photoOf(id, w = 700, h = 800) {
+  const pid = PHOTOS[id];
+  return pid ? `https://images.unsplash.com/photo-${pid}?w=${w}&h=${h}&fit=crop&crop=faces&q=80` : null;
+}
+
+// Seed du feed : [author, kind, texte, likes]
+const POST_SEED = [
+  ['u1', 'photo', 'Journée plage 🌊☀️ #Dakar #Almadies', 34],
+  ['u2', 'photo', 'Nouveau shooting 📸 vos avis les gens ?', 58],
+  ['u5', 'photo', 'Répétition danse afro 💃🔥 ça donne quoi ?', 41],
+  ['u7', 'photo', 'Make-up look du jour ✨ tuto bientôt', 63],
+  ['u6', 'photo', 'Session jazz ce soir 🎷 qui vient ?', 27],
+  ['u4', 'photo', 'Petit brushing du jour 💇🏾‍♀️', 22],
+  ['u3', 'text', 'Team foot ce weekend, qui est chaud ? ⚽', 12],
+  ['u8', 'text', 'Nouveau projet en approche 👀 restez connectés', 19],
+];
+
 let seeded = false;
+async function ensurePostsSeed() {
+  const rows = await sb('GET', 'posts?select=id&limit=1');
+  if (!rows.length) {
+    await sb('POST', 'posts', POST_SEED.map((p) => ({
+      author_id: p[0], kind: p[1], body: p[2],
+      photo: p[1] === 'photo' ? photoOf(p[0]) : null, likes: p[3],
+    })));
+    console.log('  🌱 Posts feed seed insérés.');
+  }
+}
 async function ensureSeed() {
   const rows = await sb('GET', 'profiles?select=id&limit=1');
   if (!rows.length) {
@@ -98,6 +134,8 @@ async function ensureSeed() {
     console.log('  🌱 Profils seed insérés dans Supabase.');
   }
   seeded = true;
+  try { await ensurePostsSeed(); }
+  catch (e) { console.error('  ⚠️ Table posts absente ? Exécute schema_feed.sql. (' + (e.status || '') + ')'); }
 }
 
 const AUTOREPLIES = [
@@ -260,6 +298,51 @@ async function api(req, res, url) {
     await sb('DELETE', `swipes?actor_id=eq.${ME}`);
     await sb('PATCH', `profiles?id=eq.${ME}`, { premium: false, likes_used: 0 });
     return json(res, 200, { ok: true, state: await getState() });
+  }
+
+  // ---- FEED (réseau social) ----
+  if (route === '/api/feed' && req.method === 'GET') {
+    const posts = await sb('GET', 'posts?order=id.desc&select=*');
+    const profs = await sb('GET', 'profiles?select=*');
+    const byId = {}; profs.forEach((u) => (byId[u.id] = u));
+    const out = posts.map((p) => ({
+      id: String(p.id), kind: p.kind, body: p.body, photo: p.photo, likes: p.likes || 0,
+      author: pubUser(byId[p.author_id] || { id: p.author_id, name: '?', age: 0, grad: ['#ccc', '#999'], emoji: '👤', interests: [] }),
+      createdAt: p.created_at,
+    }));
+    return json(res, 200, { posts: out });
+  }
+
+  if (route === '/api/post' && req.method === 'POST') {
+    const b = await readBody(req);
+    const kind = b.kind === 'photo' ? 'photo' : 'text';
+    const body = String(b.body || '').slice(0, 500).trim();
+    if (!body && kind !== 'photo') return json(res, 400, { error: 'vide' });
+    await sb('POST', 'posts', { author_id: ME, kind, body, photo: b.photo || null, likes: 0 });
+    return json(res, 200, { ok: true });
+  }
+
+  if (route === '/api/feed/like' && req.method === 'POST') {
+    const b = await readBody(req);
+    const [p] = await sb('GET', `posts?id=eq.${b.postId}&select=likes`);
+    if (!p) return json(res, 404, { error: 'introuvable' });
+    const likes = (p.likes || 0) + 1;
+    await sb('PATCH', `posts?id=eq.${b.postId}`, { likes });
+    return json(res, 200, { ok: true, likes });
+  }
+
+  // DM direct depuis un post (drague) → crée/récupère la conversation
+  if (route === '/api/dm' && req.method === 'POST') {
+    const b = await readBody(req);
+    const [u] = await sb('GET', `profiles?id=eq.${b.authorId}&select=id`);
+    if (!u) return json(res, 404, { error: 'introuvable' });
+    let ex = await sb('GET', `matches?user_a=eq.${ME}&user_b=eq.${b.authorId}&select=id`);
+    if (!ex.length) {
+      await sb('POST', 'matches?on_conflict=user_a,user_b',
+        { user_a: ME, user_b: b.authorId }, 'resolution=merge-duplicates');
+      ex = await sb('GET', `matches?user_a=eq.${ME}&user_b=eq.${b.authorId}&select=id`);
+    }
+    return json(res, 200, { ok: true, matchId: String(ex[0].id) });
   }
 
   if (route === '/api/health' && req.method === 'GET') {

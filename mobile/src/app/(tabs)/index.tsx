@@ -54,7 +54,7 @@ export default function Home() {
           <Pressable style={styles.circleBtn} onPress={() => api.reset().then(load)}>
             <Ionicons name="refresh" size={18} color={theme.ink} />
           </Pressable>
-          <Pressable style={styles.circleBtn} onPress={() => router.push('/foryou')}>
+          <Pressable style={styles.circleBtn} onPress={() => router.push('/feed')}>
             <Ionicons name="options" size={18} color={theme.ink} />
           </Pressable>
         </View>
