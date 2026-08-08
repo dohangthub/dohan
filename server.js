@@ -26,6 +26,13 @@ const SB_KEY = process.env.SUPABASE_SECRET_KEY;
 const ME = 'me';
 const FREE_DAILY_LIKES = 10;
 
+// Contrôle des DM (différenciateur sécurité) — politiques par profil, sans colonne DB
+const DM_POLICY = { u2: 'requests', u5: 'requests', u8: 'verified' }; // les autres: 'everyone'
+const VERIFIED = new Set(['u1', 'u2', 'u4', 'u6', 'u8', 'u10']);
+function policyOf(id) { return DM_POLICY[id] || 'everyone'; }
+// Réglages de "moi" (en mémoire, démo) : vérifié + qui peut m'écrire
+let meState = { verified: false, dmPolicy: 'everyone' };
+
 if (!SUPABASE_URL || !SB_KEY) {
   console.error('\n  ⚠️  SUPABASE_URL ou SUPABASE_SECRET_KEY manquant dans .env\n');
 }
@@ -167,6 +174,8 @@ function pubUser(u) {
   return {
     id: u.id, name: u.name, age: u.age, city: u.city, gender: u.gender,
     bio: u.bio, interests: u.interests || [], grad: u.grad, emoji: u.emoji, online: u.online,
+    verified: u.id === ME ? meState.verified : VERIFIED.has(u.id),
+    dmPolicy: u.id === ME ? meState.dmPolicy : policyOf(u.id),
   };
 }
 
@@ -222,7 +231,8 @@ async function api(req, res, url) {
     if (b.bio !== undefined) patch.bio = String(b.bio).slice(0, 200);
     if (b.emoji) patch.emoji = String(b.emoji).slice(0, 4);
     if (Array.isArray(b.interests)) patch.interests = b.interests.slice(0, 6);
-    await sb('PATCH', `profiles?id=eq.${ME}`, patch);
+    if (b.dmPolicy && ['everyone', 'verified', 'requests'].includes(b.dmPolicy)) meState.dmPolicy = b.dmPolicy;
+    if (Object.keys(patch).length) await sb('PATCH', `profiles?id=eq.${ME}`, patch);
     return json(res, 200, { ok: true, state: await getState() });
   }
 
@@ -297,6 +307,7 @@ async function api(req, res, url) {
     await sb('DELETE', `matches?user_a=eq.${ME}`);   // cascade -> messages
     await sb('DELETE', `swipes?actor_id=eq.${ME}`);
     await sb('PATCH', `profiles?id=eq.${ME}`, { premium: false, likes_used: 0 });
+    meState = { verified: false, dmPolicy: 'everyone' };
     return json(res, 200, { ok: true, state: await getState() });
   }
 
@@ -336,13 +347,26 @@ async function api(req, res, url) {
     const b = await readBody(req);
     const [u] = await sb('GET', `profiles?id=eq.${b.authorId}&select=id`);
     if (!u) return json(res, 404, { error: 'introuvable' });
+    // Contrôle des DM du destinataire
+    const policy = policyOf(b.authorId);
+    if (policy === 'verified' && !meState.verified) {
+      return json(res, 200, { ok: false, status: 'verified_only' });
+    }
+    if (policy === 'requests') {
+      return json(res, 200, { ok: true, status: 'pending' });
+    }
     let ex = await sb('GET', `matches?user_a=eq.${ME}&user_b=eq.${b.authorId}&select=id`);
     if (!ex.length) {
       await sb('POST', 'matches?on_conflict=user_a,user_b',
         { user_a: ME, user_b: b.authorId }, 'resolution=merge-duplicates');
       ex = await sb('GET', `matches?user_a=eq.${ME}&user_b=eq.${b.authorId}&select=id`);
     }
-    return json(res, 200, { ok: true, matchId: String(ex[0].id) });
+    return json(res, 200, { ok: true, status: 'open', matchId: String(ex[0].id) });
+  }
+
+  if (route === '/api/verify' && req.method === 'POST') {
+    meState.verified = true;
+    return json(res, 200, { ok: true, state: await getState() });
   }
 
   if (route === '/api/health' && req.method === 'GET') {

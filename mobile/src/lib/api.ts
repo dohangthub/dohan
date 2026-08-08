@@ -18,6 +18,8 @@ export type User = {
   grad: [string, string];
   emoji: string;
   online: boolean;
+  verified?: boolean;
+  dmPolicy?: 'everyone' | 'verified' | 'requests';
 };
 
 export type Match = {
@@ -72,8 +74,9 @@ export const api = {
     req('/api/post', { method: 'POST', body: JSON.stringify({ kind: photo ? 'photo' : 'text', body, photo }) }),
   likePost: (postId: string) =>
     req('/api/feed/like', { method: 'POST', body: JSON.stringify({ postId }) }),
-  dm: (authorId: string): Promise<{ matchId: string }> =>
+  dm: (authorId: string): Promise<{ ok: boolean; status: 'open' | 'pending' | 'verified_only'; matchId?: string }> =>
     req('/api/dm', { method: 'POST', body: JSON.stringify({ authorId }) }),
+  verify: () => req('/api/verify', { method: 'POST', body: '{}' }),
   saveProfile: (p: Partial<User>) =>
     req('/api/profile', { method: 'POST', body: JSON.stringify(p) }),
   reset: () => req('/api/reset', { method: 'POST', body: '{}' }),

@@ -13,6 +13,7 @@ export default function Feed() {
   const [liked, setLiked] = useState<Record<string, boolean>>({});
   const [compose, setCompose] = useState(false);
   const [draft, setDraft] = useState('');
+  const [dmInfo, setDmInfo] = useState<{ author: Post['author']; type: 'pending' | 'verified' } | null>(null);
 
   const load = useCallback(() => {
     api.feed().then((d) => setPosts(d.posts)).catch(() => setPosts([]));
@@ -28,7 +29,19 @@ export default function Feed() {
 
   async function message(p: Post) {
     const res = await api.dm(p.author.id);
-    if (res?.matchId) router.push(`/chat/${res.matchId}`);
+    if (res?.status === 'open' && res.matchId) router.push(`/chat/${res.matchId}`);
+    else if (res?.status === 'pending') setDmInfo({ author: p.author, type: 'pending' });
+    else if (res?.status === 'verified_only') setDmInfo({ author: p.author, type: 'verified' });
+  }
+
+  async function verifyAndRetry() {
+    const author = dmInfo?.author;
+    setDmInfo(null);
+    await api.verify();
+    if (!author) return;
+    const res = await api.dm(author.id);
+    if (res?.status === 'open' && res.matchId) router.push(`/chat/${res.matchId}`);
+    else if (res?.status === 'pending') setDmInfo({ author, type: 'pending' });
   }
 
   async function publish() {
@@ -67,7 +80,7 @@ export default function Feed() {
                 <View style={{ flex: 1 }}>
                   <View style={styles.nameRow}>
                     <Text style={styles.name}>{p.author.name}{p.author.age ? `, ${p.author.age}` : ''}</Text>
-                    <Ionicons name="checkmark-circle" size={15} color={theme.primary} />
+                    {p.author.verified ? <Ionicons name="checkmark-circle" size={15} color={theme.primary} /> : null}
                   </View>
                   <Text style={styles.meta}>📍 {p.author.city || 'Dakar'} · {kmAway(p.author.id)} km</Text>
                 </View>
@@ -95,8 +108,8 @@ export default function Feed() {
                 </View>
                 <View style={{ flex: 1 }} />
                 <Pressable style={styles.dmBtn} onPress={() => message(p)}>
-                  <Ionicons name="paper-plane" size={15} color="#fff" />
-                  <Text style={styles.dmTxt}>Message</Text>
+                  <Ionicons name={p.author.dmPolicy === 'requests' ? 'lock-closed' : 'paper-plane'} size={14} color="#fff" />
+                  <Text style={styles.dmTxt}>{p.author.dmPolicy === 'requests' ? 'Demander' : 'Message'}</Text>
                 </Pressable>
               </View>
             </View>
@@ -126,6 +139,40 @@ export default function Feed() {
             />
           </View>
         </View>
+      </Modal>
+
+      {/* Résultat DM (contrôle des messages) */}
+      <Modal visible={!!dmInfo} transparent animationType="fade" onRequestClose={() => setDmInfo(null)}>
+        <Pressable style={styles.modalCenter} onPress={() => setDmInfo(null)}>
+          <View style={styles.infoCard}>
+            {dmInfo?.type === 'pending' ? (
+              <>
+                <Ionicons name="paper-plane" size={34} color={theme.primary} />
+                <Text style={styles.infoTitle}>Demande envoyée ✓</Text>
+                <Text style={styles.infoSub}>
+                  {dmInfo.author.name} contrôle ses messages. Tu pourras discuter dès qu'elle accepte ta demande.
+                </Text>
+                <Pressable style={styles.infoBtn} onPress={() => setDmInfo(null)}>
+                  <Text style={styles.infoBtnTxt}>Compris</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Ionicons name="shield-checkmark" size={34} color={theme.primary} />
+                <Text style={styles.infoTitle}>Réservé aux profils vérifiés</Text>
+                <Text style={styles.infoSub}>
+                  {dmInfo?.author.name} n'accepte que les profils vérifiés (anti-arnaque). Vérifie ton profil pour lui écrire.
+                </Text>
+                <Pressable style={styles.infoBtn} onPress={verifyAndRetry}>
+                  <Text style={styles.infoBtnTxt}>Vérifier mon profil</Text>
+                </Pressable>
+                <Pressable onPress={() => setDmInfo(null)}>
+                  <Text style={styles.infoCancel}>Plus tard</Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );
@@ -161,4 +208,13 @@ const styles = StyleSheet.create({
   cancel: { color: theme.muted, fontWeight: '600' },
   publish: { color: theme.primary, fontWeight: '800' },
   input: { fontSize: 16, color: theme.ink, minHeight: 140, textAlignVertical: 'top' },
+
+  modalCenter: { flex: 1, backgroundColor: 'rgba(20,8,18,0.5)', alignItems: 'center', justifyContent: 'center', padding: 28 },
+  infoCard: { backgroundColor: '#fff', borderRadius: 22, padding: 24, alignItems: 'center', gap: 8, width: '100%', maxWidth: 340 },
+  infoTitle: { fontSize: 18, fontWeight: '800', color: theme.ink, marginTop: 4 },
+  infoSub: { color: theme.muted, textAlign: 'center', lineHeight: 20 },
+  infoBtn: { backgroundColor: theme.primary, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 24, alignItems: 'center', marginTop: 10, alignSelf: 'stretch' },
+  infoBtnTxt: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  infoCancel: { color: theme.muted, fontWeight: '700', marginTop: 10 },
 });
+
