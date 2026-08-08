@@ -1,0 +1,21 @@
+# --- Secrets (NE JAMAIS committer) ---
+.env
+.env.*
+!.env.example
+
+# --- Dépendances ---
+node_modules/
+mobile/node_modules/
+
+# --- Expo / build ---
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/.expo-shared/
+*.log
+
+# --- OS / éditeurs ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
