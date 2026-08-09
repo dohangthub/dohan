@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GridSkeleton } from '../../components/Skeleton';
@@ -10,7 +10,6 @@ import { Chip, PremiumPill, ScreenTitle } from '../../components/ui';
 import { AppState, User, api, kmAway, photoUrl } from '../../lib/api';
 import { shadow, theme } from '../../lib/theme';
 
-const COL_W = (Math.min(Dimensions.get('window').width, 440) - 18 * 2 - 12) / 2;
 const TABS = ['Tous', 'Récents', 'Proches'];
 
 export default function Likes() {
@@ -104,8 +103,8 @@ const styles = StyleSheet.create({
   pad: { paddingHorizontal: 18, paddingTop: 8 },
   tabs: { flexDirection: 'row', gap: 8, marginBottom: 6 },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 18, gap: 12, paddingTop: 8 },
-  tile: { width: COL_W, height: COL_W * 1.32, borderRadius: 18, overflow: 'hidden', justifyContent: 'flex-end', ...shadow },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12, paddingHorizontal: 18, paddingTop: 8 },
+  tile: { width: '48%', aspectRatio: 3 / 4, borderRadius: 18, overflow: 'hidden', justifyContent: 'flex-end', ...shadow },
   tileEmoji: { position: 'absolute', alignSelf: 'center', top: '24%', fontSize: 60 },
   tileInfo: { padding: 10 },
   tileName: { color: '#fff', fontWeight: '800', fontSize: 14 },
