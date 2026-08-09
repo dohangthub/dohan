@@ -199,6 +199,21 @@ function pubUser(u) {
   };
 }
 
+// ---------- Algo de matching : score d'un candidat pour "moi" ----------
+function deckScore(u, me) {
+  let s = 0;
+  if (u.likes_me) s += 100;                              // réciprocité (matchs instantanés) — levier #1
+  if (me && me.city && u.city === me.city) s += 40;      // proximité (même ville)
+  if (u.online) s += 25;                                 // activité récente
+  if (VERIFIED.has(u.id) || u.verified) s += 15;         // profil vérifié (confiance)
+  if (u.bio && u.bio.length > 15) s += 8;                // profil complet
+  const mine = new Set(((me && me.interests) || []).map((x) => String(x).toLowerCase()));
+  const common = ((u.interests) || []).filter((x) => mine.has(String(x).toLowerCase())).length;
+  s += common * 12;                                      // intérêts communs
+  s += Math.min(10, u.seq || 0);                         // léger boost aux nouveaux
+  return s;
+}
+
 // ---------- Etat agrégé ----------
 async function getState() {
   const [me] = await sb('GET', `profiles?id=eq.${ME}&select=*`);
@@ -206,7 +221,11 @@ async function getState() {
   const swipes = await sb('GET', `swipes?actor_id=eq.${ME}&select=target_id,action`);
   const swipeMap = {}; swipes.forEach((s) => (swipeMap[s.target_id] = s.action));
 
-  const deck = cands.filter((u) => !swipeMap[u.id]).map(pubUser);
+  const deck = cands
+    .filter((u) => !swipeMap[u.id])
+    .map((u) => ({ u, sc: deckScore(u, me) }))
+    .sort((a, b) => b.sc - a.sc || (a.u.seq || 0) - (b.u.seq || 0))
+    .map((x) => pubUser(x.u));
   const likedYou = cands.filter((u) => u.likes_me && swipeMap[u.id] !== 'pass');
 
   const matchesRaw = await sb('GET', `matches?user_a=eq.${ME}&order=id.asc&select=*`);
