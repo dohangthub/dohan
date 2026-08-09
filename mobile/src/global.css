@@ -16,7 +16,8 @@ body {
   height: 100%;
 }
 #root {
-  height: 100%;
+  height: 100vh; /* fallback */
+  height: 100dvh; /* mobile : suit la barre du navigateur (labels plus coupés) */
   display: flex;
   flex-direction: column;
 }

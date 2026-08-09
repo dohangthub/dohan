@@ -1,12 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { theme } from '../../lib/theme';
 
 const isWeb = Platform.OS === 'web';
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+  const bottomPad = Math.max(insets.bottom, isWeb ? 14 : 24);
   return (
     <Tabs
       screenOptions={{
@@ -20,9 +23,9 @@ export default function TabsLayout() {
           backgroundColor: '#fff',
           borderTopWidth: 1,
           borderTopColor: theme.line,
-          height: isWeb ? 78 : 90,
+          height: 56 + bottomPad,
           paddingTop: 8,
-          paddingBottom: isWeb ? 16 : 30,
+          paddingBottom: bottomPad,
           // séparation/ombre au-dessus de la barre
           ...(isWeb
             ? ({ boxShadow: '0 -4px 24px rgba(60,20,50,0.08)' } as any)
