@@ -101,6 +101,8 @@ export const api = {
   buyCredits: (pack: 'small' | 'medium' | 'large', method: string) =>
     req('/api/buy-credits', { method: 'POST', body: JSON.stringify({ pack, method }) }),
   boost: () => req('/api/boost', { method: 'POST', body: '{}' }),
+  payInit: (kind: 'pass' | 'credits', item: string, method: 'wave' | 'om', phone: string): Promise<{ ok: boolean; simulated?: boolean; payment_url?: string; state?: AppState }> =>
+    req('/api/pay/init', { method: 'POST', body: JSON.stringify({ kind, item, method, phone }) }),
   feed: (): Promise<{ posts: Post[] }> => req('/api/feed'),
   createPost: (body: string, photo?: string | null) =>
     req('/api/post', { method: 'POST', body: JSON.stringify({ kind: photo ? 'photo' : 'text', body, photo }) }),

@@ -3,6 +3,7 @@
  * Route: /api/*  ->  /.netlify/functions/api/*  (voir netlify.toml)
  * Nécessite les variables d'env Netlify : SUPABASE_URL, SUPABASE_SECRET_KEY
  */
+const crypto = require('crypto');
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SECRET_KEY;
 const ME = 'me';
@@ -115,8 +116,40 @@ async function getState() {
   };
 }
 const PASS_DAYS = { day: 1, weekend: 2, week: 7 };
+const PASS_PRICES = { day: 300, weekend: 700, week: 1500 };
 const CREDIT_PACKS = { small: 500, medium: 1000, large: 2000 };
 const BOOST_COST = 200;
+
+// ---------- Paiement Unitech Pay ----------
+const UNITECH_KEY = process.env.UNITECH_API_KEY;
+const UNITECH_BASE = 'https://api.unitech.sn/api';
+const PUBLIC_URL = process.env.PUBLIC_URL || 'https://luminous-sunburst-21e305.netlify.app';
+function priceOf(kind, item) {
+  if (kind === 'pass') return PASS_PRICES[item] || 0;
+  if (kind === 'credits') return CREDIT_PACKS[item] || 0;
+  return 0;
+}
+async function fulfill(kind, item) {
+  if (kind === 'pass') {
+    const days = PASS_DAYS[item] || 1;
+    await sb('PATCH', `profiles?id=eq.${ME}`, { premium_until: new Date(Date.now() + days * 86400000).toISOString() });
+  } else if (kind === 'credits') {
+    const [me] = await sb('GET', `profiles?id=eq.${ME}&select=*`);
+    await sb('PATCH', `profiles?id=eq.${ME}`, { credits: (me.credits || 0) + (CREDIT_PACKS[item] || 0) });
+  }
+}
+async function unitechCreate(method, amount, phone, desc) {
+  const action = method === 'om' ? 'create_orange_om' : 'create_wave_payment';
+  const res = await fetch(`${UNITECH_BASE}?action=${action}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${UNITECH_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      amount, customer_number: phone, description: desc,
+      callback_success: `${PUBLIC_URL}/?paid=1`, callback_cancel: `${PUBLIC_URL}/?paid=0`,
+    }),
+  });
+  return res.json();
+}
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -213,6 +246,37 @@ exports.handler = async (event) => {
       if ((me.credits || 0) < BOOST_COST) return J(402, { error: 'insufficient', need: BOOST_COST });
       await sb('PATCH', `profiles?id=eq.${ME}`, { credits: me.credits - BOOST_COST, boost_until: new Date(Date.now() + 3600000).toISOString() });
       return J(200, { ok: true, state: await getState() });
+    }
+
+    // Initier un paiement Unitech Pay
+    if (route === '/pay/init' && method === 'POST') {
+      const kind = b.kind, item = b.item, payMethod = b.method === 'om' ? 'om' : 'wave';
+      const amount = priceOf(kind, item);
+      if (!amount) return J(400, { error: 'article inconnu' });
+      if (!UNITECH_KEY) { await fulfill(kind, item); return J(200, { ok: true, simulated: true, state: await getState() }); }
+      const data = await unitechCreate(payMethod, amount, b.phone || '', `SenLove ${kind} ${item}`);
+      if (!data || !data.success || !data.data) return J(502, { error: 'paiement', detail: data });
+      await sb('POST', 'orders', { reference: data.data.reference, user_id: ME, kind, item, amount, method: payMethod, status: 'pending' });
+      return J(200, { ok: true, payment_url: data.data.payment_url, reference: data.data.reference });
+    }
+
+    // Webhook Unitech (signature HMAC-SHA256, secret = clé API)
+    if (route === '/webhook/unitech' && method === 'POST') {
+      const raw = event.isBase64Encoded ? Buffer.from(event.body || '', 'base64').toString('utf8') : (event.body || '');
+      const sig = (event.headers || {})['x-unitechpay-signature'];
+      const expected = UNITECH_KEY ? crypto.createHmac('sha256', UNITECH_KEY).update(raw).digest('hex') : '';
+      if (!UNITECH_KEY || !sig || sig !== expected) return J(401, { error: 'signature invalide' });
+      let p = {}; try { p = JSON.parse(raw); } catch {}
+      if (p.event === 'payment_completed' && p.reference) {
+        const [order] = await sb('GET', `orders?reference=eq.${encodeURIComponent(p.reference)}&select=*`);
+        if (order && order.status !== 'completed') {
+          await fulfill(order.kind, order.item);
+          await sb('PATCH', `orders?reference=eq.${encodeURIComponent(p.reference)}`, { status: 'completed' });
+        }
+      } else if ((p.event === 'payment_failed' || p.event === 'payment_expired') && p.reference) {
+        await sb('PATCH', `orders?reference=eq.${encodeURIComponent(p.reference)}`, { status: 'failed' });
+      }
+      return J(200, { ok: true });
     }
 
     if (route === '/reset' && method === 'POST') {

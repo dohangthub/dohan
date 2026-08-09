@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chip, PremiumPill, ScreenTitle } from '../../components/ui';
@@ -21,16 +21,17 @@ export default function Likes() {
   const load = useCallback(() => { api.state().then(setState).catch(() => {}); }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  async function buyPass(plan: 'day' | 'weekend' | 'week') {
-    const r = await api.buyPass(plan, pay);
-    if (r?.state) setState(r.state);
-    setShowPay(false);
+  const [paying, setPaying] = useState(false);
+  async function pay2(kind: 'pass' | 'credits', item: string) {
+    setPaying(true);
+    const method = pay === 'Orange Money' ? 'om' : 'wave';
+    const r = await api.payInit(kind, item, method, (state && state.me.phone) || '');
+    setPaying(false);
+    if (r?.simulated && r.state) { setState(r.state); setShowPay(false); return; }   // repli démo
+    if (r?.payment_url) { setShowPay(false); Linking.openURL(r.payment_url); setTimeout(load, 5000); return; } // vrai paiement
   }
-  async function buyCredits(pack: 'small' | 'medium' | 'large') {
-    const r = await api.buyCredits(pack, pay);
-    if (r?.state) setState(r.state);
-    setShowPay(false);
-  }
+  const buyPass = (plan: 'day' | 'weekend' | 'week') => pay2('pass', plan);
+  const buyCredits = (pack: 'small' | 'medium' | 'large') => pay2('credits', pack);
 
   if (!state) return <SafeAreaView style={styles.safe} edges={['top']} />;
 
