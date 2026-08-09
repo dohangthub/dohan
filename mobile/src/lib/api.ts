@@ -44,6 +44,9 @@ export type AppState = {
   deck: User[];
   matches: Match[];
   premium: boolean;
+  credits: number;
+  premiumUntil: string | null;
+  boostActive: boolean;
   likesLeft: number | null;
   likedYouCount: number;
   likedYou: User[];
@@ -93,6 +96,11 @@ export const api = {
   send: (matchId: string, text: string): Promise<{ messages: ChatMsg[] }> =>
     req('/api/messages', { method: 'POST', body: JSON.stringify({ matchId, text }) }),
   premium: () => req('/api/premium', { method: 'POST', body: '{}' }),
+  buyPass: (plan: 'day' | 'weekend' | 'week', method: string) =>
+    req('/api/buy-pass', { method: 'POST', body: JSON.stringify({ plan, method }) }),
+  buyCredits: (pack: 'small' | 'medium' | 'large', method: string) =>
+    req('/api/buy-credits', { method: 'POST', body: JSON.stringify({ pack, method }) }),
+  boost: () => req('/api/boost', { method: 'POST', body: '{}' }),
   feed: (): Promise<{ posts: Post[] }> => req('/api/feed'),
   createPost: (body: string, photo?: string | null) =>
     req('/api/post', { method: 'POST', body: JSON.stringify({ kind: photo ? 'photo' : 'text', body, photo }) }),

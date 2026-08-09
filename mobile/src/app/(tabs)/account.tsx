@@ -39,6 +39,13 @@ export default function Account() {
     setSaved(true); setTimeout(() => setSaved(false), 1600);
   }
 
+  const [boostMsg, setBoostMsg] = useState('');
+  async function boost() {
+    const r = await api.boost();
+    if (r?.error === 'insufficient') { setBoostMsg('Pas assez de crédits — passe par la boutique 💎'); setTimeout(() => setBoostMsg(''), 2500); return; }
+    if (r?.state) setState(r.state);
+  }
+
   async function changePhoto() {
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.6, base64: true });
     if (r.canceled || !r.assets?.[0]?.base64) return;
@@ -82,6 +89,19 @@ export default function Account() {
           </Text>
           <Pressable onPress={changePhoto}><Text style={styles.changePhoto}>Changer ma photo de profil</Text></Pressable>
         </View>
+
+        {/* Crédits & Boost */}
+        <View style={styles.walletCard}>
+          <View>
+            <Text style={styles.walletLabel}>Mes crédits</Text>
+            <Text style={styles.walletValue}>{state.credits} 💎</Text>
+          </View>
+          <Pressable style={[styles.boostBtn, state.boostActive && styles.boostOn]} onPress={boost}>
+            <Ionicons name="rocket" size={15} color="#fff" />
+            <Text style={styles.boostTxt}>{state.boostActive ? 'Boost actif ✓' : 'Boost 1h · 200'}</Text>
+          </Pressable>
+        </View>
+        {boostMsg ? <Text style={styles.boostMsg}>{boostMsg}</Text> : null}
 
         {/* Infos */}
         <View style={styles.card}>
@@ -142,6 +162,13 @@ const styles = StyleSheet.create({
   name: { fontSize: 22, fontWeight: '800', color: theme.ink },
   free: { color: theme.muted, fontWeight: '600' },
   changePhoto: { color: theme.primary, fontWeight: '800', marginTop: 2 },
+  walletCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: 18, padding: 16, ...shadowSoft },
+  walletLabel: { color: theme.muted, fontWeight: '700', fontSize: 12 },
+  walletValue: { color: theme.ink, fontWeight: '800', fontSize: 22, marginTop: 2 },
+  boostBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.primary, paddingHorizontal: 16, paddingVertical: 11, borderRadius: 999 },
+  boostOn: { backgroundColor: theme.success },
+  boostTxt: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  boostMsg: { color: theme.primary, textAlign: 'center', fontWeight: '600', fontSize: 13 },
 
   card: { backgroundColor: '#fff', borderRadius: 20, padding: 18, gap: 8, ...shadowSoft },
   label: { fontSize: 12, fontWeight: '800', color: theme.muted, marginTop: 8 },

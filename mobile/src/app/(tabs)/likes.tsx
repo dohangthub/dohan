@@ -16,15 +16,20 @@ export default function Likes() {
   const [state, setState] = useState<AppState | null>(null);
   const [tab, setTab] = useState(0);
   const [showPay, setShowPay] = useState(false);
-  const [pay, setPay] = useState<string | null>(null);
+  const [pay, setPay] = useState<string>('Wave');
 
   const load = useCallback(() => { api.state().then(setState).catch(() => {}); }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  async function unlock() {
-    await api.premium();
+  async function buyPass(plan: 'day' | 'weekend' | 'week') {
+    const r = await api.buyPass(plan, pay);
+    if (r?.state) setState(r.state);
     setShowPay(false);
-    load();
+  }
+  async function buyCredits(pack: 'small' | 'medium' | 'large') {
+    const r = await api.buyCredits(pack, pay);
+    if (r?.state) setState(r.state);
+    setShowPay(false);
   }
 
   if (!state) return <SafeAreaView style={styles.safe} edges={['top']} />;
@@ -66,35 +71,54 @@ export default function Likes() {
         <View style={{ height: 20 }} />
       </ScrollView>
 
-      {/* Paywall */}
+      {/* Boutique */}
       {showPay ? (
         <View style={styles.overlay}>
           <View style={styles.sheet}>
             <Pressable style={styles.sheetX} onPress={() => setShowPay(false)}>
               <Ionicons name="close" size={20} color={theme.muted} />
             </Pressable>
-            <LinearGradient colors={theme.pinkGrad} style={styles.sheetIcon}>
-              <Ionicons name="diamond" size={22} color="#fff" />
-            </LinearGradient>
-            <Text style={styles.sheetTitle}>Passe en SenLove Gold</Text>
-            {['Voir qui t\'a liké', 'Likes illimités', 'Boost de visibilité', 'Mode incognito'].map((f) => (
-              <View key={f} style={styles.feat}>
-                <Ionicons name="checkmark-circle" size={18} color={theme.primary} />
-                <Text style={styles.featText}>{f}</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.sheetTitle}>Boutique SenLove</Text>
+
+              <Text style={styles.payLabel}>Payer avec</Text>
+              <View style={styles.payRow}>
+                {['Wave', 'Orange Money', 'Free Money'].map((m) => (
+                  <Pressable key={m} style={[styles.pay, pay === m && styles.paySel]} onPress={() => setPay(m)}>
+                    <Text style={[styles.payText, pay === m && { color: theme.primary }]}>{m}</Text>
+                  </Pressable>
+                ))}
               </View>
-            ))}
-            <Text style={styles.payLabel}>Payer avec</Text>
-            <View style={styles.payRow}>
-              {['Wave', 'Orange Money', 'Free Money'].map((m) => (
-                <Pressable key={m} style={[styles.pay, pay === m && styles.paySel]} onPress={() => setPay(m)}>
-                  <Text style={[styles.payText, pay === m && { color: theme.primary }]}>{m}</Text>
+
+              <Text style={styles.storeSection}>🎟️  Passes — premium temporaire</Text>
+              {[
+                { key: 'day', label: '24 heures', price: '300 FCFA' },
+                { key: 'weekend', label: 'Weekend', price: '700 FCFA' },
+                { key: 'week', label: 'Semaine', price: '1 500 FCFA', best: true },
+              ].map((p) => (
+                <Pressable key={p.key} style={[styles.buyRow, p.best && styles.buyRowBest]} onPress={() => buyPass(p.key as any)}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.buyLabel}>{p.label}{p.best ? '  ⭐ populaire' : ''}</Text>
+                    <Text style={styles.buySub}>Voir qui t'a liké · likes illimités · incognito</Text>
+                  </View>
+                  <Text style={styles.buyPrice}>{p.price}</Text>
                 </Pressable>
               ))}
-            </View>
-            <Pressable style={[styles.cta, !pay && { opacity: 0.5 }]} disabled={!pay} onPress={unlock}>
-              <Text style={styles.ctaText}>Continuer · 3 000 FCFA/mois</Text>
-            </Pressable>
-            <Text style={styles.demoNote}>Démo — aucun paiement réel.</Text>
+
+              <Text style={styles.storeSection}>💎  Crédits — boost, super-crush…</Text>
+              {[
+                { key: 'small', label: '500 crédits', price: '500 FCFA' },
+                { key: 'medium', label: '1 000 crédits', price: '1 000 FCFA' },
+                { key: 'large', label: '2 000 crédits', price: '2 000 FCFA' },
+              ].map((p) => (
+                <Pressable key={p.key} style={styles.buyRow} onPress={() => buyCredits(p.key as any)}>
+                  <Text style={[styles.buyLabel, { flex: 1 }]}>{p.label}</Text>
+                  <Text style={styles.buyPrice}>{p.price}</Text>
+                </Pressable>
+              ))}
+
+              <Text style={styles.demoNote}>Démo — aucun paiement réel (Wave/OM à intégrer).</Text>
+            </ScrollView>
           </View>
         </View>
       ) : null}
@@ -155,7 +179,13 @@ const styles = StyleSheet.create({
   unlockText: { color: '#fff', fontWeight: '800' },
 
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(20,8,18,0.5)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, gap: 8 },
+  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, gap: 8, maxHeight: '88%' },
+  storeSection: { fontSize: 13, fontWeight: '800', color: theme.ink, marginTop: 16, marginBottom: 8 },
+  buyRow: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1.5, borderColor: theme.line, borderRadius: 14, padding: 14, marginBottom: 8 },
+  buyRowBest: { borderColor: theme.primary, backgroundColor: theme.tint },
+  buyLabel: { fontWeight: '800', color: theme.ink, fontSize: 15 },
+  buySub: { color: theme.muted, fontSize: 12, marginTop: 2 },
+  buyPrice: { fontWeight: '800', color: theme.primary, fontSize: 15 },
   sheetX: { position: 'absolute', top: 16, right: 18, zIndex: 2 },
   sheetIcon: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
   sheetTitle: { fontSize: 22, fontWeight: '800', color: theme.ink, textAlign: 'center', marginBottom: 4 },

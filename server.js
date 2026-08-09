@@ -242,16 +242,26 @@ async function getState() {
     return { id: String(m.id), user: pubUser(u), lastMessage: last ? last.body : null, count: list.length };
   });
 
-  const premium = !!(me && me.premium);
+  const now = Date.now();
+  const passActive = !!(me && me.premium_until && new Date(me.premium_until).getTime() > now);
+  const premium = !!(me && (me.premium || passActive));
   return {
     me: { ...pubUser(me), phone: (me && me.phone) || null },
     deck, matches, premium,
+    credits: (me && me.credits) || 0,
+    premiumUntil: (me && me.premium_until) || null,
+    boostActive: !!(me && me.boost_until && new Date(me.boost_until).getTime() > now),
     likesLeft: premium ? null : Math.max(0, FREE_DAILY_LIKES - (me ? me.likes_used : 0)),
     likedYouCount: likedYou.length,
     likedYou: premium ? likedYou.map(pubUser) : [],
     icebreakers: ICEBREAKERS,
   };
 }
+
+// Tarifs / durées
+const PASS_DAYS = { day: 1, weekend: 2, week: 7 };
+const CREDIT_PACKS = { small: 500, medium: 1000, large: 2000 };
+const BOOST_COST = 200;
 
 // ---------- API ----------
 async function api(req, res, url) {
@@ -284,8 +294,9 @@ async function api(req, res, url) {
     if (!u) return json(res, 404, { error: 'introuvable' });
     const action = b.action === 'crush' ? 'crush' : b.action === 'pass' ? 'pass' : 'like';
 
-    const [me] = await sb('GET', `profiles?id=eq.${ME}&select=premium,likes_used`);
-    if (action !== 'pass' && !me.premium && me.likes_used >= FREE_DAILY_LIKES) {
+    const [me] = await sb('GET', `profiles?id=eq.${ME}&select=*`);
+    const isPrem = me.premium || (me.premium_until && new Date(me.premium_until).getTime() > Date.now());
+    if (action !== 'pass' && !isPrem && me.likes_used >= FREE_DAILY_LIKES) {
       return json(res, 402, { error: 'limit', message: 'Limite de likes atteinte' });
     }
 
@@ -293,7 +304,7 @@ async function api(req, res, url) {
     await sb('POST', 'swipes?on_conflict=actor_id,target_id',
       { actor_id: ME, target_id: u.id, action }, 'resolution=merge-duplicates');
 
-    if (action !== 'pass' && !me.premium) {
+    if (action !== 'pass' && !isPrem) {
       await sb('PATCH', `profiles?id=eq.${ME}`, { likes_used: me.likes_used + 1 });
     }
 
@@ -344,10 +355,38 @@ async function api(req, res, url) {
     return json(res, 200, { ok: true, premium: true, state: await getState() });
   }
 
+  // Acheter un PASS (premium temporaire) — paiement simulé Wave/OM
+  if (route === '/api/buy-pass' && req.method === 'POST') {
+    const b = await readBody(req);
+    const days = PASS_DAYS[b.plan] || 1;
+    const until = new Date(Date.now() + days * 86400000).toISOString();
+    await sb('PATCH', `profiles?id=eq.${ME}`, { premium_until: until });
+    return json(res, 200, { ok: true, state: await getState() });
+  }
+
+  // Acheter des CRÉDITS
+  if (route === '/api/buy-credits' && req.method === 'POST') {
+    const b = await readBody(req);
+    const amount = CREDIT_PACKS[b.pack] || 0;
+    if (!amount) return json(res, 400, { error: 'pack inconnu' });
+    const [me] = await sb('GET', `profiles?id=eq.${ME}&select=*`);
+    await sb('PATCH', `profiles?id=eq.${ME}`, { credits: (me.credits || 0) + amount });
+    return json(res, 200, { ok: true, state: await getState() });
+  }
+
+  // Dépenser des crédits : BOOST 1h
+  if (route === '/api/boost' && req.method === 'POST') {
+    const [me] = await sb('GET', `profiles?id=eq.${ME}&select=*`);
+    if ((me.credits || 0) < BOOST_COST) return json(res, 402, { error: 'insufficient', need: BOOST_COST });
+    const until = new Date(Date.now() + 3600000).toISOString();
+    await sb('PATCH', `profiles?id=eq.${ME}`, { credits: me.credits - BOOST_COST, boost_until: until });
+    return json(res, 200, { ok: true, state: await getState() });
+  }
+
   if (route === '/api/reset' && req.method === 'POST') {
     await sb('DELETE', `matches?user_a=eq.${ME}`);   // cascade -> messages
     await sb('DELETE', `swipes?actor_id=eq.${ME}`);
-    await sb('PATCH', `profiles?id=eq.${ME}`, { premium: false, likes_used: 0 });
+    await sb('PATCH', `profiles?id=eq.${ME}`, { premium: false, likes_used: 0, credits: 0, premium_until: null, boost_until: null });
     meState = { verified: false, dmPolicy: 'everyone' };
     return json(res, 200, { ok: true, state: await getState() });
   }

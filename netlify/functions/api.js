@@ -102,13 +102,21 @@ async function getState() {
     const last = list[list.length - 1];
     return { id: String(m.id), user: pubUser(u), lastMessage: last ? last.body : null, count: list.length };
   });
-  const premium = !!(me && me.premium);
+  const now = Date.now();
+  const passActive = !!(me && me.premium_until && new Date(me.premium_until).getTime() > now);
+  const premium = !!(me && (me.premium || passActive));
   return {
     me: { ...pubUser(me), phone: (me && me.phone) || null }, deck, matches, premium,
+    credits: (me && me.credits) || 0,
+    premiumUntil: (me && me.premium_until) || null,
+    boostActive: !!(me && me.boost_until && new Date(me.boost_until).getTime() > now),
     likesLeft: premium ? null : Math.max(0, FREE_DAILY_LIKES - (me ? me.likes_used : 0)),
     likedYouCount: likedYou.length, likedYou: premium ? likedYou.map(pubUser) : [], icebreakers: ICEBREAKERS,
   };
 }
+const PASS_DAYS = { day: 1, weekend: 2, week: 7 };
+const CREDIT_PACKS = { small: 500, medium: 1000, large: 2000 };
+const BOOST_COST = 200;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -150,10 +158,11 @@ exports.handler = async (event) => {
       const [u] = await sb('GET', `profiles?id=eq.${b.targetId}&select=*`);
       if (!u) return J(404, { error: 'introuvable' });
       const action = b.action === 'crush' ? 'crush' : b.action === 'pass' ? 'pass' : 'like';
-      const [me] = await sb('GET', `profiles?id=eq.${ME}&select=premium,likes_used`);
-      if (action !== 'pass' && !me.premium && me.likes_used >= FREE_DAILY_LIKES) return J(402, { error: 'limit' });
+      const [me] = await sb('GET', `profiles?id=eq.${ME}&select=*`);
+      const isPrem = me.premium || (me.premium_until && new Date(me.premium_until).getTime() > Date.now());
+      if (action !== 'pass' && !isPrem && me.likes_used >= FREE_DAILY_LIKES) return J(402, { error: 'limit' });
       await sb('POST', 'swipes?on_conflict=actor_id,target_id', { actor_id: ME, target_id: u.id, action }, 'resolution=merge-duplicates');
-      if (action !== 'pass' && !me.premium) await sb('PATCH', `profiles?id=eq.${ME}`, { likes_used: me.likes_used + 1 });
+      if (action !== 'pass' && !isPrem) await sb('PATCH', `profiles?id=eq.${ME}`, { likes_used: me.likes_used + 1 });
       let match = false;
       if (action !== 'pass') {
         const likesBack = u.likes_me || action === 'crush' || Math.random() < 0.55;
@@ -186,10 +195,30 @@ exports.handler = async (event) => {
 
     if (route === '/premium' && method === 'POST') { await sb('PATCH', `profiles?id=eq.${ME}`, { premium: true }); return J(200, { ok: true, state: await getState() }); }
     if (route === '/verify' && method === 'POST') { await sb('PATCH', `profiles?id=eq.${ME}`, { verified: true }); return J(200, { ok: true, state: await getState() }); }
+
+    if (route === '/buy-pass' && method === 'POST') {
+      const days = PASS_DAYS[b.plan] || 1;
+      await sb('PATCH', `profiles?id=eq.${ME}`, { premium_until: new Date(Date.now() + days * 86400000).toISOString() });
+      return J(200, { ok: true, state: await getState() });
+    }
+    if (route === '/buy-credits' && method === 'POST') {
+      const amount = CREDIT_PACKS[b.pack] || 0;
+      if (!amount) return J(400, { error: 'pack inconnu' });
+      const [me] = await sb('GET', `profiles?id=eq.${ME}&select=*`);
+      await sb('PATCH', `profiles?id=eq.${ME}`, { credits: (me.credits || 0) + amount });
+      return J(200, { ok: true, state: await getState() });
+    }
+    if (route === '/boost' && method === 'POST') {
+      const [me] = await sb('GET', `profiles?id=eq.${ME}&select=*`);
+      if ((me.credits || 0) < BOOST_COST) return J(402, { error: 'insufficient', need: BOOST_COST });
+      await sb('PATCH', `profiles?id=eq.${ME}`, { credits: me.credits - BOOST_COST, boost_until: new Date(Date.now() + 3600000).toISOString() });
+      return J(200, { ok: true, state: await getState() });
+    }
+
     if (route === '/reset' && method === 'POST') {
       await sb('DELETE', `matches?user_a=eq.${ME}`);
       await sb('DELETE', `swipes?actor_id=eq.${ME}`);
-      await sb('PATCH', `profiles?id=eq.${ME}`, { premium: false, likes_used: 0, verified: false, dm_policy: 'everyone' });
+      await sb('PATCH', `profiles?id=eq.${ME}`, { premium: false, likes_used: 0, verified: false, dm_policy: 'everyone', credits: 0, premium_until: null, boost_until: null });
       return J(200, { ok: true, state: await getState() });
     }
 
