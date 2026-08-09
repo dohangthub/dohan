@@ -1,0 +1,12 @@
+# Déploiement du frontend Expo (web) sur Netlify.
+# L'app appelle l'API Railway (https://dohan-production.up.railway.app) automatiquement.
+[build]
+  base = "mobile"
+  command = "npx expo export -p web"
+  publish = "dist"
+
+# Routage SPA : les routes inconnues (ex. /chat/7) retombent sur l'app
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
