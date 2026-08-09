@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -7,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar, ScreenTitle } from '../../components/ui';
 import { Post, REACTIONS, api, kmAway } from '../../lib/api';
+import { pickImageDataUrl } from '../../lib/pickImage';
 import { shadow, shadowSoft, theme } from '../../lib/theme';
 
 function reactSummary(p: Post) {
@@ -52,16 +52,12 @@ export default function Feed() {
   }
 
   async function pickImage() {
-    const r = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.6, base64: true,
-    });
-    if (r.canceled || !r.assets?.[0]?.base64) return;
+    const dataUrl = await pickImageDataUrl();
+    if (!dataUrl) return;
     setUploading(true);
     try {
-      const a = r.assets[0];
-      const dataUrl = `data:${a.mimeType || 'image/jpeg'};base64,${a.base64}`;
       const up = await api.upload(dataUrl);
-      setDraftPhoto(up.url);
+      if (up?.url) setDraftPhoto(up.url);
     } catch {}
     setUploading(false);
   }

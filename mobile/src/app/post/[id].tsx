@@ -2,13 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView,
+  Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView,
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '../../components/ui';
-import { Comment, REACTIONS, api } from '../../lib/api';
+import { Comment, Post, REACTIONS, api, kmAway } from '../../lib/api';
 import { shadow, theme } from '../../lib/theme';
 
 function summary(c: Comment) {
@@ -20,14 +20,28 @@ function summary(c: Comment) {
 export default function PostComments() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [comments, setComments] = useState<Comment[]>([]);
+  const [post, setPost] = useState<Post | null>(null);
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [reactFor, setReactFor] = useState<Comment | null>(null);
 
   const load = useCallback(() => {
-    if (id) api.comments(id).then((d) => setComments(d.comments)).catch(() => {});
+    if (!id) return;
+    api.comments(id).then((d) => setComments(d.comments)).catch(() => {});
+    api.feed().then((d) => setPost(d.posts.find((p) => p.id === id) || null)).catch(() => {});
   }, [id]);
   useEffect(() => { load(); }, [load]);
+
+  function reactPost(emoji: string) {
+    setPost((p) => (p ? { ...p, reactions: { ...p.reactions, [emoji]: (p.reactions[emoji] || 0) + 1 } } : p));
+    if (id) api.reactPost(id, emoji).catch(() => {});
+  }
+  const pr = (() => {
+    const m: Record<string, number> = { ...((post && post.reactions) || {}) };
+    if (post && post.likes) m['❤️'] = (m['❤️'] || 0) + post.likes;
+    const e = Object.entries(m).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+    return { emojis: e.slice(0, 3).map(([x]) => x), total: e.reduce((s, [, n]) => s + n, 0) };
+  })();
 
   async function send() {
     const t = text.trim();
@@ -82,11 +96,37 @@ export default function PostComments() {
         <Pressable onPress={() => router.back()} style={styles.back}>
           <Ionicons name="chevron-back" size={26} color={theme.primary} />
         </Pressable>
-        <Text style={styles.title}>Commentaires</Text>
+        <Text style={styles.title}>Publication</Text>
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.list}>
+          {post ? (
+            <View style={styles.postCard}>
+              <View style={styles.pHead}>
+                <Avatar user={post.author} size={44} />
+                <View style={{ flex: 1 }}>
+                  <View style={styles.pNameRow}>
+                    <Text style={styles.pName}>{post.author.name}{post.author.age ? `, ${post.author.age}` : ''}</Text>
+                    {post.author.verified ? <Ionicons name="checkmark-circle" size={15} color={theme.primary} /> : null}
+                  </View>
+                  <Text style={styles.pMeta}>📍 {post.author.city || 'Dakar'} · {kmAway(post.author.id)} km</Text>
+                </View>
+              </View>
+              {post.body ? <Text style={styles.pBody}>{post.body}</Text> : null}
+              {post.kind === 'photo' && post.photo ? (
+                <Image source={{ uri: post.photo }} resizeMode="cover" style={styles.pPhoto} />
+              ) : null}
+              {pr.total > 0 ? <Text style={styles.pReacts}>{pr.emojis.join('')}  {pr.total}</Text> : null}
+              <View style={styles.pReactBar}>
+                {REACTIONS.map((e) => (
+                  <Pressable key={e} onPress={() => reactPost(e)} style={styles.pReactBtn}><Text style={{ fontSize: 24 }}>{e}</Text></Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          <Text style={styles.commentsLabel}>Commentaires{comments.length ? ` · ${comments.length}` : ''}</Text>
           {top.length === 0 ? (
             <Text style={styles.empty}>Aucun commentaire. Lance la discussion 👇</Text>
           ) : (
@@ -134,8 +174,20 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.line, backgroundColor: '#fff' },
   back: { padding: 4 },
   title: { fontWeight: '800', color: theme.ink, fontSize: 17 },
-  list: { padding: 14, gap: 14 },
-  empty: { textAlign: 'center', color: theme.muted, marginTop: 40 },
+  list: { padding: 14, gap: 12 },
+  empty: { textAlign: 'center', color: theme.muted, marginTop: 20 },
+
+  postCard: { backgroundColor: '#fff', borderRadius: 18, padding: 14, gap: 10, ...shadow, shadowOpacity: 0.06 },
+  pHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  pNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  pName: { fontWeight: '800', color: theme.ink, fontSize: 15 },
+  pMeta: { color: theme.muted, fontSize: 12, marginTop: 1 },
+  pBody: { color: theme.ink, fontSize: 15, lineHeight: 21 },
+  pPhoto: { width: '100%', height: 320, borderRadius: 14, backgroundColor: theme.line },
+  pReacts: { color: theme.muted, fontSize: 13, fontWeight: '600' },
+  pReactBar: { flexDirection: 'row', justifyContent: 'space-around', borderTopWidth: 1, borderTopColor: theme.line, paddingTop: 8 },
+  pReactBtn: { paddingHorizontal: 6 },
+  commentsLabel: { fontSize: 13, fontWeight: '800', color: theme.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 },
 
   cRow: { flexDirection: 'row', gap: 10 },
   reply: { marginLeft: 40 },
