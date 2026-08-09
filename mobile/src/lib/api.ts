@@ -112,6 +112,25 @@ export const api = {
     req('/api/feed/react', { method: 'POST', body: JSON.stringify({ postId, emoji }) }),
   upload: (dataUrl: string): Promise<{ url: string }> =>
     req('/api/upload', { method: 'POST', body: JSON.stringify({ dataUrl }) }),
+  // Upload avec progression (barre de chargement) — renvoie l'URL publique
+  uploadWithProgress: (dataUrl: string, onProgress: (pct: number) => void): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_BASE}/api/upload`);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.timeout = 60000;
+      if (xhr.upload) xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100)); };
+      xhr.onload = () => {
+        try {
+          const j = JSON.parse(xhr.responseText || '{}');
+          if (xhr.status >= 200 && xhr.status < 300 && j.url) resolve(j.url);
+          else reject(new Error(j.error || 'upload'));
+        } catch (e) { reject(e); }
+      };
+      xhr.onerror = () => reject(new Error('network'));
+      xhr.ontimeout = () => reject(new Error('timeout'));
+      xhr.send(JSON.stringify({ dataUrl }));
+    }),
   comments: (postId: string): Promise<{ comments: Comment[] }> =>
     req(`/api/comments?postId=${postId}`),
   addComment: (postId: string, body: string, parentId?: string) =>

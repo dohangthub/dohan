@@ -21,7 +21,9 @@ export default function Feed() {
   const [compose, setCompose] = useState(false);
   const [draft, setDraft] = useState('');
   const [draftPhoto, setDraftPhoto] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [upState, setUpState] = useState<'idle' | 'uploading' | 'error'>('idle');
+  const [upPct, setUpPct] = useState(0);
   const [dmInfo, setDmInfo] = useState<{ author: Post['author']; type: 'pending' | 'verified' } | null>(null);
   const [reactFor, setReactFor] = useState<Post | null>(null);
 
@@ -54,20 +56,26 @@ export default function Feed() {
   async function pickImage() {
     const dataUrl = await pickImageDataUrl();
     if (!dataUrl) return;
-    setUploading(true);
-    try {
-      const up = await api.upload(dataUrl);
-      if (up?.url) setDraftPhoto(up.url);
-    } catch {}
-    setUploading(false);
+    setPreview(dataUrl);       // aperçu immédiat
+    setDraftPhoto(null);
+    doUpload(dataUrl);
   }
+  async function doUpload(dataUrl: string) {
+    setUpState('uploading'); setUpPct(0);
+    try {
+      const url = await api.uploadWithProgress(dataUrl, setUpPct);
+      setDraftPhoto(url); setUpState('idle');
+    } catch { setUpState('error'); }
+  }
+  function removePhoto() { setPreview(null); setDraftPhoto(null); setUpState('idle'); setUpPct(0); }
 
   async function publish() {
+    if (upState === 'uploading') return;              // on attend la fin de l'upload
     const t = draft.trim();
     if (!t && !draftPhoto) return;
     setCompose(false);
     await api.createPost(t, draftPhoto);
-    setDraft(''); setDraftPhoto(null);
+    setDraft(''); removePhoto();
     load();
   }
 
@@ -164,21 +172,52 @@ export default function Feed() {
             <View style={styles.sheetHead}>
               <Pressable onPress={() => setCompose(false)}><Text style={styles.cancel}>Annuler</Text></Pressable>
               <Text style={styles.sheetTitle}>Nouveau post</Text>
-              <Pressable onPress={publish}><Text style={styles.publish}>Publier</Text></Pressable>
+              <Pressable onPress={publish} disabled={upState === 'uploading'}>
+                <Text style={[styles.publish, upState === 'uploading' && { opacity: 0.4 }]}>
+                  {upState === 'uploading' ? 'Envoi…' : 'Publier'}
+                </Text>
+              </Pressable>
             </View>
             <TextInput style={styles.input} value={draft} onChangeText={setDraft}
               placeholder="Quoi de neuf ? Partage un truc..." placeholderTextColor="#C3BCC7" multiline maxLength={500} />
-            {draftPhoto ? (
+
+            {preview ? (
               <View style={styles.previewWrap}>
-                <Image source={{ uri: draftPhoto }} resizeMode="cover" style={styles.preview} />
-                <Pressable style={styles.previewX} onPress={() => setDraftPhoto(null)}>
+                <Image source={{ uri: draftPhoto || preview }} resizeMode="cover" style={styles.preview} />
+
+                {upState === 'uploading' ? (
+                  <View style={styles.upOverlay}>
+                    <View style={styles.progressTrack}>
+                      <View style={[styles.progressBar, { width: `${Math.max(6, upPct)}%` }]} />
+                    </View>
+                    <Text style={styles.upTxt}>{upPct < 100 ? `Envoi ${upPct}%` : 'Traitement…'}</Text>
+                  </View>
+                ) : null}
+
+                {upState === 'error' ? (
+                  <View style={styles.upOverlay}>
+                    <Ionicons name="alert-circle" size={26} color="#fff" />
+                    <Text style={styles.upErr}>Échec de l'envoi</Text>
+                    <Pressable style={styles.retryBtn} onPress={() => preview && doUpload(preview)}>
+                      <Ionicons name="refresh" size={15} color="#fff" />
+                      <Text style={styles.retryTxt}>Réessayer</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+
+                {upState === 'idle' && draftPhoto ? (
+                  <View style={styles.doneBadge}><Ionicons name="checkmark" size={14} color="#fff" /></View>
+                ) : null}
+
+                <Pressable style={styles.previewX} onPress={removePhoto}>
                   <Ionicons name="close" size={16} color="#fff" />
                 </Pressable>
               </View>
             ) : null}
-            <Pressable style={styles.addPhoto} onPress={pickImage} disabled={uploading}>
-              {uploading ? <ActivityIndicator color={theme.primary} />
-                : <><Ionicons name="image" size={20} color={theme.primary} /><Text style={styles.addPhotoTxt}>Ajouter une photo</Text></>}
+
+            <Pressable style={styles.addPhoto} onPress={pickImage}>
+              <Ionicons name="image" size={20} color={theme.primary} />
+              <Text style={styles.addPhotoTxt}>{preview ? 'Changer la photo' : 'Ajouter une photo'}</Text>
             </Pressable>
           </View>
         </View>
@@ -251,8 +290,16 @@ const styles = StyleSheet.create({
   publish: { color: theme.primary, fontWeight: '800' },
   input: { fontSize: 16, color: theme.ink, minHeight: 100, textAlignVertical: 'top' },
   previewWrap: { position: 'relative' },
-  preview: { width: '100%', height: 200, borderRadius: 14, backgroundColor: theme.line },
+  preview: { width: '100%', height: 220, borderRadius: 14, backgroundColor: theme.line },
   previewX: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.55)', width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  upOverlay: { position: 'absolute', inset: 0, borderRadius: 14, backgroundColor: 'rgba(20,8,40,0.55)', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16 },
+  progressTrack: { width: '80%', height: 8, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.35)', overflow: 'hidden' },
+  progressBar: { height: 8, borderRadius: 999, backgroundColor: '#fff' },
+  upTxt: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  upErr: { color: '#fff', fontWeight: '800' },
+  retryBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: theme.primary, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 999, marginTop: 2 },
+  retryTxt: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  doneBadge: { position: 'absolute', bottom: 8, left: 8, width: 26, height: 26, borderRadius: 13, backgroundColor: theme.success, alignItems: 'center', justifyContent: 'center' },
   addPhoto: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1.5, borderColor: theme.line, borderRadius: 14, paddingVertical: 12 },
   addPhotoTxt: { color: theme.primary, fontWeight: '800' },
 
