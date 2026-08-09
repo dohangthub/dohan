@@ -55,9 +55,23 @@ export type Post = {
   body: string;
   photo: string | null;
   likes: number;
+  reactions: Record<string, number>;
+  commentCount: number;
   author: User;
   createdAt: string;
 };
+
+export type Comment = {
+  id: string;
+  parentId: string | null;
+  body: string;
+  likes: number;
+  reactions: Record<string, number>;
+  author: User;
+  createdAt: string;
+};
+
+export const REACTIONS = ['❤️', '😂', '😮', '👏', '🔥'];
 
 async function req(path: string, opts?: RequestInit) {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -81,6 +95,18 @@ export const api = {
     req('/api/post', { method: 'POST', body: JSON.stringify({ kind: photo ? 'photo' : 'text', body, photo }) }),
   likePost: (postId: string) =>
     req('/api/feed/like', { method: 'POST', body: JSON.stringify({ postId }) }),
+  reactPost: (postId: string, emoji: string) =>
+    req('/api/feed/react', { method: 'POST', body: JSON.stringify({ postId, emoji }) }),
+  upload: (dataUrl: string): Promise<{ url: string }> =>
+    req('/api/upload', { method: 'POST', body: JSON.stringify({ dataUrl }) }),
+  comments: (postId: string): Promise<{ comments: Comment[] }> =>
+    req(`/api/comments?postId=${postId}`),
+  addComment: (postId: string, body: string, parentId?: string) =>
+    req('/api/comment', { method: 'POST', body: JSON.stringify({ postId, body, parentId }) }),
+  likeComment: (commentId: string) =>
+    req('/api/comment/like', { method: 'POST', body: JSON.stringify({ commentId }) }),
+  reactComment: (commentId: string, emoji: string) =>
+    req('/api/comment/react', { method: 'POST', body: JSON.stringify({ commentId, emoji }) }),
   dm: (authorId: string): Promise<{ ok: boolean; status: 'open' | 'pending' | 'verified_only'; matchId?: string }> =>
     req('/api/dm', { method: 'POST', body: JSON.stringify({ authorId }) }),
   verify: () => req('/api/verify', { method: 'POST', body: '{}' }),

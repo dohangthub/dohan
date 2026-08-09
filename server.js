@@ -61,6 +61,23 @@ async function sb(method, pathQuery, body, extraPrefer) {
   return data;
 }
 
+// ---------- Supabase Storage (upload d'images) ----------
+async function storage(method, pathQuery, body, contentType) {
+  const headers = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
+  if (contentType) headers['Content-Type'] = contentType;
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/${pathQuery}`, { method, headers, body });
+  const txt = await res.text();
+  let data = null; try { data = txt ? JSON.parse(txt) : null; } catch { data = txt; }
+  if (!res.ok) { const e = new Error('storage'); e.status = res.status; e.data = data; throw e; }
+  return data;
+}
+async function ensureBucket() {
+  try {
+    await storage('POST', 'bucket', JSON.stringify({ id: 'posts', name: 'posts', public: true }), 'application/json');
+    console.log('  🪣 Bucket Storage "posts" créé.');
+  } catch (e) { /* existe déjà -> ignore */ }
+}
+
 // ---------- Données seed ----------
 const GRADS = [
   ['#ff8a5b', '#ff4e73'], ['#5b8cff', '#7b5bff'], ['#12b886', '#0ca678'],
@@ -317,9 +334,12 @@ async function api(req, res, url) {
   if (route === '/api/feed' && req.method === 'GET') {
     const posts = await sb('GET', 'posts?order=id.desc&select=*');
     const profs = await sb('GET', 'profiles?select=*');
+    const cmts = await sb('GET', 'comments?select=post_id');
+    const cCount = {}; cmts.forEach((c) => (cCount[c.post_id] = (cCount[c.post_id] || 0) + 1));
     const byId = {}; profs.forEach((u) => (byId[u.id] = u));
     const out = posts.map((p) => ({
       id: String(p.id), kind: p.kind, body: p.body, photo: p.photo, likes: p.likes || 0,
+      reactions: p.reactions || {}, commentCount: cCount[p.id] || 0,
       author: pubUser(byId[p.author_id] || { id: p.author_id, name: '?', age: 0, grad: ['#ccc', '#999'], emoji: '👤', interests: [] }),
       createdAt: p.created_at,
     }));
@@ -335,6 +355,19 @@ async function api(req, res, url) {
     return json(res, 200, { ok: true });
   }
 
+  // Upload d'image -> Supabase Storage, renvoie l'URL publique
+  if (route === '/api/upload' && req.method === 'POST') {
+    const b = await readBody(req);
+    const m = String(b.dataUrl || '').match(/^data:([^;]+);base64,(.+)$/);
+    if (!m) return json(res, 400, { error: 'image invalide' });
+    const contentType = m[1];
+    const buf = Buffer.from(m[2], 'base64');
+    const ext = (contentType.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+    const name = `p_${Date.now()}_${Math.floor(Math.random() * 1e6)}.${ext}`;
+    await storage('POST', `object/posts/${name}`, buf, contentType);
+    return json(res, 200, { ok: true, url: `${SUPABASE_URL}/storage/v1/object/public/posts/${name}` });
+  }
+
   if (route === '/api/feed/like' && req.method === 'POST') {
     const b = await readBody(req);
     const [p] = await sb('GET', `posts?id=eq.${b.postId}&select=likes`);
@@ -342,6 +375,61 @@ async function api(req, res, url) {
     const likes = (p.likes || 0) + 1;
     await sb('PATCH', `posts?id=eq.${b.postId}`, { likes });
     return json(res, 200, { ok: true, likes });
+  }
+
+  // Réaction emoji sur un post
+  if (route === '/api/feed/react' && req.method === 'POST') {
+    const b = await readBody(req);
+    const emoji = String(b.emoji || '').slice(0, 8);
+    const [p] = await sb('GET', `posts?id=eq.${b.postId}&select=reactions`);
+    if (!p) return json(res, 404, { error: 'introuvable' });
+    const r = p.reactions || {}; r[emoji] = (r[emoji] || 0) + 1;
+    await sb('PATCH', `posts?id=eq.${b.postId}`, { reactions: r });
+    return json(res, 200, { ok: true, reactions: r });
+  }
+
+  // ---- COMMENTAIRES ----
+  if (route === '/api/comments' && req.method === 'GET') {
+    const postId = url.searchParams.get('postId');
+    const rows = await sb('GET', `comments?post_id=eq.${postId}&order=id.asc&select=*`);
+    const profs = await sb('GET', 'profiles?select=*');
+    const byId = {}; profs.forEach((u) => (byId[u.id] = u));
+    const out = rows.map((c) => ({
+      id: String(c.id), parentId: c.parent_id ? String(c.parent_id) : null,
+      body: c.body, likes: c.likes || 0, reactions: c.reactions || {},
+      author: pubUser(byId[c.author_id] || { id: c.author_id, name: '?', age: 0, grad: ['#ccc', '#999'], emoji: '👤', interests: [] }),
+      createdAt: c.created_at,
+    }));
+    return json(res, 200, { comments: out });
+  }
+
+  if (route === '/api/comment' && req.method === 'POST') {
+    const b = await readBody(req);
+    const body = String(b.body || '').slice(0, 500).trim();
+    if (!body) return json(res, 400, { error: 'vide' });
+    const row = { post_id: b.postId, author_id: ME, body };
+    if (b.parentId) row.parent_id = b.parentId;
+    await sb('POST', 'comments', row);
+    return json(res, 200, { ok: true });
+  }
+
+  if (route === '/api/comment/like' && req.method === 'POST') {
+    const b = await readBody(req);
+    const [c] = await sb('GET', `comments?id=eq.${b.commentId}&select=likes`);
+    if (!c) return json(res, 404, { error: 'introuvable' });
+    const likes = (c.likes || 0) + 1;
+    await sb('PATCH', `comments?id=eq.${b.commentId}`, { likes });
+    return json(res, 200, { ok: true, likes });
+  }
+
+  if (route === '/api/comment/react' && req.method === 'POST') {
+    const b = await readBody(req);
+    const emoji = String(b.emoji || '').slice(0, 8);
+    const [c] = await sb('GET', `comments?id=eq.${b.commentId}&select=reactions`);
+    if (!c) return json(res, 404, { error: 'introuvable' });
+    const r = c.reactions || {}; r[emoji] = (r[emoji] || 0) + 1;
+    await sb('PATCH', `comments?id=eq.${b.commentId}`, { reactions: r });
+    return json(res, 200, { ok: true, reactions: r });
   }
 
   // DM direct depuis un post (drague) → crée/récupère la conversation
@@ -430,7 +518,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, async () => {
   console.log(`\n  💘 Doxan MVP : http://localhost:${PORT}`);
-  try { await ensureSeed(); console.log('  ✅ Supabase connecté.\n'); }
+  try { await ensureSeed(); await ensureBucket(); console.log('  ✅ Supabase connecté.\n'); }
   catch (e) {
     console.error('  ❌ Supabase :', e.status || '', JSON.stringify(e.data || e.message));
     console.error('  👉 Vérifie l\'URL/clé et exécute schema.sql dans le SQL Editor.\n');
