@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FeedSkeleton } from '../../components/Skeleton';
 import { Avatar, ScreenTitle } from '../../components/ui';
 import { Post, REACTIONS, api, kmAway } from '../../lib/api';
 import { pickImageDataUrl } from '../../lib/pickImage';
@@ -89,7 +90,7 @@ export default function Feed() {
       </View>
 
       {!posts ? (
-        <View style={styles.center}><ActivityIndicator color={theme.primary} /></View>
+        <FeedSkeleton />
       ) : (
         <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
           {posts.map((p) => {

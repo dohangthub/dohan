@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DeckSkeleton, Skeleton } from '../../components/Skeleton';
 import { SwipeDeck } from '../../components/SwipeDeck';
 import { Avatar } from '../../components/ui';
 import { AppState, User, api } from '../../lib/api';
@@ -35,7 +36,11 @@ export default function Home() {
   if (!state) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <View style={styles.center}><ActivityIndicator color={theme.primary} /></View>
+        <View style={styles.header}>
+          <View style={styles.brandRow}><Skeleton w={30} h={30} r={9} /><Skeleton w={90} h={20} /></View>
+          <View style={{ flexDirection: 'row', gap: 10 }}><Skeleton w={40} h={40} r={20} /><Skeleton w={40} h={40} r={20} /></View>
+        </View>
+        <View style={styles.deckWrap}><DeckSkeleton /></View>
       </SafeAreaView>
     );
   }

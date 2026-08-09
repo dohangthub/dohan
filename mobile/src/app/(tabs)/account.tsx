@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ProfileSkeleton } from '../../components/Skeleton';
 import { Avatar } from '../../components/ui';
 import { AppState, Post, api } from '../../lib/api';
 import { pickImageDataUrl } from '../../lib/pickImage';
@@ -46,7 +47,7 @@ export default function Account() {
     setUploading(false);
   }
 
-  if (!state) return <SafeAreaView style={styles.safe} edges={['top']} />;
+  if (!state) return <SafeAreaView style={styles.safe} edges={['top']}><ProfileSkeleton /></SafeAreaView>;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

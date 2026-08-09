@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react';
 import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { GridSkeleton } from '../../components/Skeleton';
 import { Chip, PremiumPill, ScreenTitle } from '../../components/ui';
 import { AppState, User, api, kmAway, photoUrl } from '../../lib/api';
 import { shadow, theme } from '../../lib/theme';
@@ -19,7 +20,12 @@ export default function Likes() {
   const load = useCallback(() => { api.state().then(setState).catch(() => {}); }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  if (!state) return <SafeAreaView style={styles.safe} edges={['top']} />;
+  if (!state) return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <View style={styles.pad}><ScreenTitle title="Like You" /></View>
+      <GridSkeleton />
+    </SafeAreaView>
+  );
 
   const premium = state.premium;
   const people = state.likedYou;

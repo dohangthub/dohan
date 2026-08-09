@@ -3,14 +3,18 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ListSkeleton } from '../../components/Skeleton';
 import { Avatar, ScreenTitle } from '../../components/ui';
 import { Match, api } from '../../lib/api';
 import { shadowSoft, theme } from '../../lib/theme';
 
 export default function ChatList() {
   const [matches, setMatches] = useState<Match[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
-  const load = useCallback(() => { api.state().then((s) => setMatches(s.matches)).catch(() => {}); }, []);
+  const load = useCallback(() => {
+    api.state().then((s) => { setMatches(s.matches); setLoaded(true); }).catch(() => setLoaded(true));
+  }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const fresh = matches.filter((m) => !m.lastMessage);
@@ -22,7 +26,9 @@ export default function ChatList() {
         <ScreenTitle title="Messages" />
       </View>
 
-      {matches.length === 0 ? (
+      {!loaded ? (
+        <ListSkeleton />
+      ) : matches.length === 0 ? (
         <Text style={styles.empty}>Pas encore de match.{'\n'}Va swiper pour trouver ton crush 🔥</Text>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false}>
