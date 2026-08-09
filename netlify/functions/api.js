@@ -177,6 +177,7 @@ exports.handler = async (event) => {
       if (b.name) patch.name = String(b.name).slice(0, 30);
       if (b.age) patch.age = Math.max(18, Math.min(80, parseInt(b.age) || 25));
       if (b.city) patch.city = String(b.city).slice(0, 30);
+      if (b.gender && ['H', 'F', 'A'].includes(b.gender)) patch.gender = b.gender;
       if (b.bio !== undefined) patch.bio = String(b.bio).slice(0, 200);
       if (b.emoji) patch.emoji = String(b.emoji).slice(0, 4);
       if (Array.isArray(b.interests)) patch.interests = b.interests.slice(0, 6);

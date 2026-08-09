@@ -6,68 +6,162 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 
 import { api } from '../lib/api';
 
-const V = { bg: '#FFFFFF', card: '#FFFFFF', violet: '#7C3AED', violetLight: '#7C3AED', ink: '#1C1630', muted: '#6E6690', line: '#EBE5F7', field: '#F6F2FF' };
+const V = { bg: '#FFFFFF', violet: '#7C3AED', violetLight: '#9B6DFF', ink: '#1C1630', muted: '#6E6690', line: '#EBE5F7', field: '#F6F2FF' };
 const GRAD = ['#9B6DFF', '#6D28D9'] as [string, string];
+const CITIES = ['Dakar', 'Thiès', 'Saint-Louis', 'Rufisque', 'Mbour', 'Ziguinchor', 'Autre'];
+const TOTAL = 6;
 
 export default function Signup() {
-  const [name, setName] = useState('');
+  const [step, setStep] = useState(0);
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [pwd, setPwd] = useState('');
+  const [code, setCode] = useState('');
+  const [name, setName] = useState('');
+  const [gender, setGender] = useState<'H' | 'F' | 'A' | ''>('');
+  const [age, setAge] = useState('');
+  const [city, setCity] = useState('');
   const [busy, setBusy] = useState(false);
 
-  async function submit() {
+  const next = () => setStep((s) => Math.min(TOTAL - 1, s + 1));
+  const back = () => (step === 0 ? router.push('/welcome') : setStep((s) => s - 1));
+
+  async function finish() {
     if (busy) return;
     setBusy(true);
-    try { await api.saveProfile({ name: name || 'Moi', phone } as any); } catch {}
+    try {
+      await api.saveProfile({ name: name || 'Moi', gender: gender || undefined, age: age || undefined, city: city || undefined } as any);
+    } catch {}
     setBusy(false);
     router.replace('/');
   }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: V.bg }} contentContainerStyle={styles.wrap}>
-      <Pressable onPress={() => router.push('/welcome')} style={styles.back}>
-        <Ionicons name="chevron-back" size={22} color={V.violetLight} /><Text style={styles.backTxt}>Accueil</Text>
-      </Pressable>
+    <ScrollView style={{ flex: 1, backgroundColor: V.bg }} contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+      {/* En-tête : retour + progression */}
+      <View style={styles.top}>
+        <Pressable onPress={back} style={styles.back}><Ionicons name="chevron-back" size={26} color={V.violet} /></Pressable>
+        <View style={styles.track}><View style={[styles.fill, { width: `${((step + 1) / TOTAL) * 100}%` }]} /></View>
+        {step >= 3 ? <Pressable onPress={step === TOTAL - 1 ? finish : next}><Text style={styles.skip}>Plus tard</Text></Pressable> : <View style={{ width: 60 }} />}
+      </View>
 
-      <View style={styles.card}>
-        <LinearGradient colors={GRAD} style={styles.logo}><Ionicons name="heart" size={22} color="#fff" /></LinearGradient>
-        <Text style={styles.title}>Crée ton compte</Text>
-        <Text style={styles.sub}>2 minutes et tu es dans le game 🔥</Text>
+      <View style={styles.body}>
+        {step === 0 && (
+          <Step title="Crée ton compte" sub="Ça prend 1 minute, promis 🔥">
+            <Field label="Email" value={email} onChange={setEmail} placeholder="toi@email.com" keyboard="email-address" />
+            <Field label="Mot de passe" value={pwd} onChange={setPwd} placeholder="••••••••" secure />
+            <Primary label="Continuer" onPress={next} disabled={!email.includes('@') || pwd.length < 4} />
+          </Step>
+        )}
 
-        <Text style={styles.label}>Prénom</Text>
-        <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Ton prénom" placeholderTextColor="#6C5F8A" />
-        <Text style={styles.label}>Email</Text>
-        <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="toi@email.com" placeholderTextColor="#6C5F8A" keyboardType="email-address" autoCapitalize="none" />
-        <Text style={styles.label}>Téléphone</Text>
-        <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="+221 ..." placeholderTextColor="#6C5F8A" keyboardType="phone-pad" />
-        <Text style={styles.label}>Mot de passe</Text>
-        <TextInput style={styles.input} value={pwd} onChangeText={setPwd} placeholder="••••••••" placeholderTextColor="#6C5F8A" secureTextEntry />
+        {step === 1 && (
+          <Step title="Confirme ton email" sub={`On a envoyé un code à ${email || 'ton email'}.`}>
+            <View style={styles.mailIcon}><Ionicons name="mail-open" size={30} color={V.violet} /></View>
+            <Field label="Code à 4 chiffres" value={code} onChange={(t) => setCode(t.replace(/\D/g, '').slice(0, 4))} placeholder="1234" keyboard="number-pad" center />
+            <Primary label="Confirmer" onPress={next} disabled={code.length < 4} />
+            <Pressable onPress={() => {}}><Text style={styles.linkC}>Renvoyer le code</Text></Pressable>
+          </Step>
+        )}
 
-        <Pressable style={styles.primary} onPress={submit}>
-          <Text style={styles.primaryTxt}>{busy ? 'Création…' : 'S\'inscrire gratuitement'}</Text>
-        </Pressable>
-        <Text style={styles.terms}>En t'inscrivant, tu acceptes nos Conditions et notre Politique de confidentialité.</Text>
+        {step === 2 && (
+          <Step title="Comment tu t'appelles ?" sub="Ton prénom s'affichera sur ton profil.">
+            <Field label="Prénom" value={name} onChange={setName} placeholder="Ton prénom" autoFocus />
+            <Primary label="Continuer" onPress={next} disabled={!name.trim()} />
+          </Step>
+        )}
 
-        <Text style={styles.footer}>Déjà un compte ? <Text style={styles.link} onPress={() => router.push('/login')}>Se connecter</Text></Text>
+        {step === 3 && (
+          <Step title="Je suis..." sub="Pour te proposer les bons profils.">
+            <View style={{ gap: 12, marginTop: 6 }}>
+              {[['F', 'Une femme', '👩'], ['H', 'Un homme', '👨'], ['A', 'Autre / Je préfère ne pas dire', '✨']].map(([g, lbl, emo]) => (
+                <Pressable key={g} style={[styles.choice, gender === g && styles.choiceOn]} onPress={() => { setGender(g as any); setTimeout(next, 180); }}>
+                  <Text style={{ fontSize: 22 }}>{emo}</Text>
+                  <Text style={[styles.choiceTxt, gender === g && { color: V.violet }]}>{lbl}</Text>
+                  {gender === g ? <Ionicons name="checkmark-circle" size={20} color={V.violet} /> : <View style={{ width: 20 }} />}
+                </Pressable>
+              ))}
+            </View>
+          </Step>
+        )}
+
+        {step === 4 && (
+          <Step title="Ton âge" sub="Tu dois avoir 18 ans ou plus.">
+            <Field label="Âge" value={age} onChange={(t) => setAge(t.replace(/\D/g, '').slice(0, 2))} placeholder="24" keyboard="number-pad" center />
+            <Primary label="Continuer" onPress={next} disabled={!age || parseInt(age, 10) < 18} />
+          </Step>
+        )}
+
+        {step === 5 && (
+          <Step title="Tu es où ?" sub="Pour rencontrer des gens près de toi.">
+            <View style={styles.cities}>
+              {CITIES.map((c) => (
+                <Pressable key={c} style={[styles.cityChip, city === c && styles.cityChipOn]} onPress={() => setCity(c)}>
+                  <Text style={[styles.cityTxt, city === c && { color: '#fff' }]}>{c}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <Primary label={busy ? 'Création…' : 'Terminer 🎉'} onPress={finish} />
+          </Step>
+        )}
       </View>
     </ScrollView>
   );
 }
 
+function Step({ title, sub, children }: any) {
+  return (
+    <View style={{ gap: 6 }}>
+      <LinearGradient colors={GRAD} style={styles.logo}><Ionicons name="heart" size={20} color="#fff" /></LinearGradient>
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.sub}>{sub}</Text>
+      <View style={{ height: 8 }} />
+      {children}
+    </View>
+  );
+}
+function Field({ label, value, onChange, placeholder, secure, keyboard, autoFocus, center }: any) {
+  return (
+    <View>
+      <Text style={styles.label}>{label}</Text>
+      <TextInput
+        style={[styles.input, center && { textAlign: 'center', fontSize: 22, letterSpacing: 4 }]} value={value} onChangeText={onChange}
+        placeholder={placeholder} placeholderTextColor="#B7ADD0" secureTextEntry={secure} keyboardType={keyboard} autoCapitalize={keyboard === 'email-address' ? 'none' : 'sentences'} autoFocus={autoFocus}
+      />
+    </View>
+  );
+}
+function Primary({ label, onPress, disabled }: any) {
+  return (
+    <Pressable style={[styles.primary, disabled && { opacity: 0.4 }]} onPress={disabled ? undefined : onPress} disabled={disabled}>
+      <Text style={styles.primaryTxt}>{label}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  wrap: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 20, paddingVertical: 50, gap: 16 },
-  back: { position: 'absolute', top: 18, left: 16, flexDirection: 'row', alignItems: 'center', gap: 2 },
-  backTxt: { color: V.violetLight, fontWeight: '700' },
-  card: { width: '100%', maxWidth: 420, backgroundColor: V.card, borderRadius: 26, padding: 28, borderWidth: 1, borderColor: V.line, gap: 4, shadowColor: '#2E1065', shadowOpacity: 0.08, shadowRadius: 30, shadowOffset: { width: 0, height: 16 }, elevation: 6 },
-  logo: { width: 54, height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  title: { color: V.ink, fontWeight: '900', fontSize: 26 },
-  sub: { color: V.muted, fontSize: 15, marginBottom: 10 },
-  label: { color: V.muted, fontWeight: '700', fontSize: 12, marginTop: 10, marginBottom: 4 },
-  input: { backgroundColor: V.field, borderWidth: 1, borderColor: V.line, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, color: V.ink, fontSize: 15 },
-  primary: { backgroundColor: V.violet, borderRadius: 13, paddingVertical: 15, alignItems: 'center', marginTop: 18 },
+  wrap: { flexGrow: 1, paddingHorizontal: 20, paddingBottom: 40 },
+  top: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 16 },
+  back: { padding: 2 },
+  track: { flex: 1, height: 6, borderRadius: 999, backgroundColor: V.field, overflow: 'hidden' },
+  fill: { height: 6, borderRadius: 999, backgroundColor: V.violet },
+  skip: { color: V.muted, fontWeight: '700', width: 60, textAlign: 'right' },
+  body: { flex: 1, justifyContent: 'center', maxWidth: 440, width: '100%', alignSelf: 'center', paddingVertical: 30 },
+
+  logo: { width: 50, height: 50, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  title: { color: V.ink, fontWeight: '900', fontSize: 28, letterSpacing: -0.5 },
+  sub: { color: V.muted, fontSize: 15, lineHeight: 22 },
+  label: { color: V.muted, fontWeight: '700', fontSize: 12, marginTop: 14, marginBottom: 5 },
+  input: { backgroundColor: V.field, borderWidth: 1, borderColor: V.line, borderRadius: 13, paddingHorizontal: 15, paddingVertical: 15, color: V.ink, fontSize: 16 },
+  primary: { backgroundColor: V.violet, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 20 },
   primaryTxt: { color: '#fff', fontWeight: '800', fontSize: 15 },
-  terms: { color: V.muted, fontSize: 12, textAlign: 'center', marginTop: 12, lineHeight: 17 },
-  footer: { color: V.muted, textAlign: 'center', marginTop: 16 },
-  link: { color: V.violetLight, fontWeight: '800' },
+  linkC: { color: V.violet, fontWeight: '700', textAlign: 'center', marginTop: 16 },
+  mailIcon: { alignSelf: 'center', width: 64, height: 64, borderRadius: 32, backgroundColor: V.field, alignItems: 'center', justifyContent: 'center', marginVertical: 10 },
+
+  choice: { flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: 2, borderColor: V.line, borderRadius: 16, paddingHorizontal: 18, paddingVertical: 18 },
+  choiceOn: { borderColor: V.violet, backgroundColor: V.field },
+  choiceTxt: { flex: 1, color: V.ink, fontWeight: '800', fontSize: 16 },
+
+  cities: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
+  cityChip: { borderWidth: 1.5, borderColor: V.line, borderRadius: 999, paddingHorizontal: 18, paddingVertical: 12 },
+  cityChipOn: { backgroundColor: V.violet, borderColor: V.violet },
+  cityTxt: { color: V.ink, fontWeight: '700' },
 });
