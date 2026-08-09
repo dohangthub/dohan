@@ -48,7 +48,7 @@ export default function Home() {
           <LinearGradient colors={theme.pinkGrad} style={styles.logo}>
             <Ionicons name="heart" size={16} color="#fff" />
           </LinearGradient>
-          <Text style={styles.brand}>Doxan</Text>
+          <Text style={styles.brand}>Sen<Text style={{ color: theme.primary }}>Love</Text></Text>
         </View>
         <View style={styles.headerBtns}>
           <Pressable style={styles.circleBtn} onPress={() => api.reset().then(load)}>

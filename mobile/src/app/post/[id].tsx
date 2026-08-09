@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   cAction: { color: theme.muted, fontWeight: '700', fontSize: 13 },
   cReacts: { color: theme.muted, fontSize: 13, fontWeight: '600' },
 
-  replyBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#FFF0F5' },
+  replyBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#F1EBFF' },
   replyTxt: { color: theme.ink, fontSize: 13 },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: theme.line, backgroundColor: '#fff' },
   input: { flex: 1, borderWidth: 1, borderColor: theme.line, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, color: theme.ink },

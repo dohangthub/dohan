@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Doxan",
-    "slug": "doxan",
+    "name": "SenLove",
+    "slug": "senlove",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "doxan",
+    "scheme": "senlove",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"

@@ -76,7 +76,7 @@ export default function Likes() {
             <LinearGradient colors={theme.pinkGrad} style={styles.sheetIcon}>
               <Ionicons name="diamond" size={22} color="#fff" />
             </LinearGradient>
-            <Text style={styles.sheetTitle}>Passe en Doxan Gold</Text>
+            <Text style={styles.sheetTitle}>Passe en SenLove Gold</Text>
             {['Voir qui t\'a liké', 'Likes illimités', 'Boost de visibilité', 'Mode incognito'].map((f) => (
               <View key={f} style={styles.feat}>
                 <Ionicons name="checkmark-circle" size={18} color={theme.primary} />
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   payLabel: { color: theme.muted, fontWeight: '700', marginTop: 8, fontSize: 12 },
   payRow: { flexDirection: 'row', gap: 8 },
   pay: { flex: 1, borderWidth: 2, borderColor: theme.line, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-  paySel: { borderColor: theme.primary, backgroundColor: '#FFF0F5' },
+  paySel: { borderColor: theme.primary, backgroundColor: '#F1EBFF' },
   payText: { fontWeight: '800', fontSize: 12, color: theme.ink },
   cta: { backgroundColor: theme.primary, borderRadius: 16, paddingVertical: 15, alignItems: 'center', marginTop: 10 },
   ctaText: { color: '#fff', fontWeight: '800', fontSize: 15 },

@@ -1,15 +1,16 @@
-// Palette Doxan — inspirée de Fewebe (crème chaud + magenta)
+// Palette SenLove — violet premium (rebranding)
 export const theme = {
-  bg: '#F4F1F2',
-  bgWarm: '#ECE7E9',
+  bg: '#F5F3FA',
+  bgWarm: '#E9E5F2',
   surface: '#FFFFFF',
-  primary: '#FF3E79',
-  primaryDark: '#FF2E74',
-  pinkGrad: ['#FF7AA8', '#FF2E74'] as [string, string],
-  ink: '#1B1620',
-  muted: '#8A828F',
-  line: '#EFE9EE',
-  chip: '#F5F1F3',
+  primary: '#7C3AED',
+  primaryDark: '#6D28D9',
+  pinkGrad: ['#9B6DFF', '#6D28D9'] as [string, string], // dégradé de marque (violet)
+  tint: '#F1EBFF', // fond violet clair (sélection, badges)
+  ink: '#1C1630',
+  muted: '#8A82A0',
+  line: '#EAE4F5',
+  chip: '#F2EEFA',
   gold: '#FF8A5B',
   success: '#38C793',
   radius: 26,
@@ -17,16 +18,16 @@ export const theme = {
 };
 
 export const shadow = {
-  shadowColor: '#3A1330',
-  shadowOpacity: 0.12,
+  shadowColor: '#2E1065',
+  shadowOpacity: 0.14,
   shadowRadius: 20,
   shadowOffset: { width: 0, height: 10 },
   elevation: 6,
 };
 
 export const shadowSoft = {
-  shadowColor: '#3A1330',
-  shadowOpacity: 0.06,
+  shadowColor: '#2E1065',
+  shadowOpacity: 0.07,
   shadowRadius: 12,
   shadowOffset: { width: 0, height: 4 },
   elevation: 2,

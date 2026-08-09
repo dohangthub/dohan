@@ -1,5 +1,5 @@
 /**
- * Doxan — API en Netlify Function (tout le backend, sans serveur Railway).
+ * SenLove — API en Netlify Function (tout le backend, sans serveur Railway).
  * Route: /api/*  ->  /.netlify/functions/api/*  (voir netlify.toml)
  * Nécessite les variables d'env Netlify : SUPABASE_URL, SUPABASE_SECRET_KEY
  */

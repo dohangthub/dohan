@@ -26,7 +26,7 @@ export default function Account() {
       setState(s);
       setName(s.me.name === 'Moi' ? '' : s.me.name);
       setPhone(s.me.phone || '');
-      setBio(s.me.bio === 'Nouveau sur Doxan 👋' ? '' : s.me.bio);
+      setBio(s.me.bio === 'Nouveau sur SenLove 👋' ? '' : s.me.bio);
       setEmoji(s.me.emoji);
     }).catch(() => {});
     api.feed().then((d) => setMyPosts(d.posts.filter((p) => p.author.id === 'me'))).catch(() => {});
@@ -34,7 +34,7 @@ export default function Account() {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   async function save() {
-    const s = await api.saveProfile({ name: name || 'Moi', bio: bio || 'Nouveau sur Doxan 👋', emoji, phone } as any);
+    const s = await api.saveProfile({ name: name || 'Moi', bio: bio || 'Nouveau sur SenLove 👋', emoji, phone } as any);
     if (s?.state) setState(s.state);
     setSaved(true); setTimeout(() => setSaved(false), 1600);
   }
@@ -78,7 +78,7 @@ export default function Account() {
             {state.me.verified ? <Ionicons name="shield-checkmark" size={18} color={theme.success} /> : null}
           </View>
           <Text style={styles.free}>
-            {state.premium ? '👑 Doxan Gold' : `Compte gratuit · ${state.likesLeft} likes restants`}
+            {state.premium ? '👑 SenLove Gold' : `Compte gratuit · ${state.likesLeft} likes restants`}
           </Text>
           <Pressable onPress={changePhoto}><Text style={styles.changePhoto}>Changer ma photo de profil</Text></Pressable>
         </View>
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   textarea: { height: 84, textAlignVertical: 'top' },
   emojiRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   emojiBtn: { width: 44, height: 44, borderRadius: 12, borderWidth: 2, borderColor: theme.line, alignItems: 'center', justifyContent: 'center' },
-  emojiSel: { borderColor: theme.primary, backgroundColor: '#FFF0F5' },
+  emojiSel: { borderColor: theme.primary, backgroundColor: '#F1EBFF' },
   saveBtn: { backgroundColor: theme.primary, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 14, ...shadow },
   saveTxt: { color: '#fff', fontWeight: '800', fontSize: 15 },
 

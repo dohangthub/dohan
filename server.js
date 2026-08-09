@@ -1,5 +1,5 @@
 /**
- * Doxan — MVP appli de rencontres (Dakar)
+ * SenLove — MVP appli de rencontres (Dakar)
  * Serveur Node.js pur (zéro dépendance) + Supabase (API REST / PostgREST).
  * L'état est persisté dans Supabase. La clé SECRÈTE reste côté serveur.
  */
@@ -103,7 +103,7 @@ function seedRows() {
   // Toutes les lignes DOIVENT avoir exactement les mêmes clés (contrainte insert groupé PostgREST)
   const me = {
     id: ME, seq: 0, name: 'Moi', age: 25, city: 'Dakar', gender: 'H',
-    bio: 'Nouveau sur Doxan 👋', interests: ['Musique', 'Sport'],
+    bio: 'Nouveau sur SenLove 👋', interests: ['Musique', 'Sport'],
     grad: ['#222', '#555'], emoji: '🙂', online: false, likes_me: false,
     is_me: true, premium: false, likes_used: 0,
   };
@@ -520,7 +520,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, async () => {
-  console.log(`\n  💘 Doxan MVP : http://localhost:${PORT}`);
+  console.log(`\n  💘 SenLove MVP : http://localhost:${PORT}`);
   try { await ensureSeed(); await ensureBucket(); console.log('  ✅ Supabase connecté.\n'); }
   catch (e) {
     console.error('  ❌ Supabase :', e.status || '', JSON.stringify(e.data || e.message));
