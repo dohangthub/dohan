@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-const V = { bg: '#0E0620', card: '#170B2E', violet: '#7C3AED', violetLight: '#A98BFF', ink: '#F4F0FF', muted: '#A79CC4', line: 'rgba(255,255,255,0.12)' };
+const V = { bg: '#FFFFFF', card: '#FFFFFF', violet: '#7C3AED', violetLight: '#7C3AED', ink: '#1C1630', muted: '#6E6690', line: '#EBE5F7', field: '#F6F2FF' };
 const GRAD = ['#9B6DFF', '#6D28D9'] as [string, string];
 
 export default function Login() {
@@ -46,12 +46,12 @@ const styles = StyleSheet.create({
   wrap: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 20, gap: 16 },
   back: { position: 'absolute', top: 18, left: 16, flexDirection: 'row', alignItems: 'center', gap: 2 },
   backTxt: { color: V.violetLight, fontWeight: '700' },
-  card: { width: '100%', maxWidth: 420, backgroundColor: V.card, borderRadius: 26, padding: 28, borderWidth: 1, borderColor: V.line, gap: 6 },
+  card: { width: '100%', maxWidth: 420, backgroundColor: V.card, borderRadius: 26, padding: 28, borderWidth: 1, borderColor: V.line, gap: 6, shadowColor: '#2E1065', shadowOpacity: 0.08, shadowRadius: 30, shadowOffset: { width: 0, height: 16 }, elevation: 6 },
   logo: { width: 54, height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   title: { color: V.ink, fontWeight: '900', fontSize: 26 },
   sub: { color: V.muted, fontSize: 15, marginBottom: 12 },
   label: { color: V.muted, fontWeight: '700', fontSize: 12, marginTop: 10, marginBottom: 4 },
-  input: { backgroundColor: '#0E0620', borderWidth: 1, borderColor: V.line, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, color: V.ink, fontSize: 15 },
+  input: { backgroundColor: V.field, borderWidth: 1, borderColor: V.line, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, color: V.ink, fontSize: 15 },
   primary: { backgroundColor: V.violet, borderRadius: 13, paddingVertical: 15, alignItems: 'center', marginTop: 18 },
   primaryTxt: { color: '#fff', fontWeight: '800', fontSize: 15 },
   or: { color: V.muted, textAlign: 'center', marginVertical: 12, fontSize: 13 },

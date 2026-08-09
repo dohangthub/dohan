@@ -17,11 +17,11 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style={full ? 'light' : 'dark'} />
-      <View style={{ flex: 1, backgroundColor: full ? '#0E0620' : theme.bgWarm, alignItems: framed ? 'center' : 'stretch' }}>
+      <StatusBar style="dark" />
+      <View style={{ flex: 1, backgroundColor: full ? '#FFFFFF' : theme.bgWarm, alignItems: framed ? 'center' : 'stretch' }}>
         <View
           style={[
-            { flex: 1, width: '100%', backgroundColor: full ? '#0E0620' : theme.bg },
+            { flex: 1, width: '100%', backgroundColor: full ? '#FFFFFF' : theme.bg },
             framed && {
               maxWidth: 430,
               // @ts-expect-error web-only style
@@ -32,7 +32,7 @@ export default function RootLayout() {
           <Stack
             screenOptions={{
               headerShown: false,
-              contentStyle: { backgroundColor: full ? '#0E0620' : theme.bg },
+              contentStyle: { backgroundColor: full ? '#FFFFFF' : theme.bg },
             }}
           >
             <Stack.Screen name="(tabs)" />
