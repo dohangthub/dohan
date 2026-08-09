@@ -3,13 +3,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ReactNode, useState } from 'react';
 import { Image, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
-import { User, kmAway, commonInterests, photoUrl } from '../lib/api';
+import { User, kmAway, commonInterests, avatarUri } from '../lib/api';
 import { shadow, shadowSoft, theme } from '../lib/theme';
 
 /* ---------- Avatar rond (photo réelle + repli dégradé/emoji) ---------- */
 export function Avatar({ user, size = 52 }: { user: User; size?: number }) {
   const [err, setErr] = useState(false);
-  const uri = photoUrl(user, 200, 200);
+  const uri = avatarUri(user, 200, 200);
   if (uri && !err) {
     return (
       <Image
@@ -77,7 +77,7 @@ export function PhotoCard({
   children?: ReactNode;
 }) {
   const [err, setErr] = useState(false);
-  const uri = photoUrl(user, 700, 950);
+  const uri = avatarUri(user, 700, 950);
   return (
     <View style={[styles.photoCard, style]}>
       {uri && !err ? (

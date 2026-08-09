@@ -193,6 +193,7 @@ function pubUser(u) {
   return {
     id: u.id, name: u.name, age: u.age, city: u.city, gender: u.gender,
     bio: u.bio, interests: u.interests || [], grad: u.grad, emoji: u.emoji, online: u.online,
+    photo: u.photo || null,
     verified: u.id === ME ? meState.verified : VERIFIED.has(u.id),
     dmPolicy: u.id === ME ? meState.dmPolicy : policyOf(u.id),
   };
@@ -224,7 +225,7 @@ async function getState() {
 
   const premium = !!(me && me.premium);
   return {
-    me: pubUser(me),
+    me: { ...pubUser(me), phone: (me && me.phone) || null },
     deck, matches, premium,
     likesLeft: premium ? null : Math.max(0, FREE_DAILY_LIKES - (me ? me.likes_used : 0)),
     likedYouCount: likedYou.length,
@@ -250,6 +251,8 @@ async function api(req, res, url) {
     if (b.bio !== undefined) patch.bio = String(b.bio).slice(0, 200);
     if (b.emoji) patch.emoji = String(b.emoji).slice(0, 4);
     if (Array.isArray(b.interests)) patch.interests = b.interests.slice(0, 6);
+    if (b.photo !== undefined) patch.photo = b.photo || null;
+    if (b.phone !== undefined) patch.phone = String(b.phone).slice(0, 30);
     if (b.dmPolicy && ['everyone', 'verified', 'requests'].includes(b.dmPolicy)) meState.dmPolicy = b.dmPolicy;
     if (Object.keys(patch).length) await sb('PATCH', `profiles?id=eq.${ME}`, patch);
     return json(res, 200, { ok: true, state: await getState() });

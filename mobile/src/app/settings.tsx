@@ -1,0 +1,102 @@
+import { Ionicons } from '@expo/vector-icons';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { AppState, api } from '../lib/api';
+import { shadowSoft, theme } from '../lib/theme';
+
+const POLICIES = [
+  { key: 'everyone', label: 'Tout le monde' },
+  { key: 'verified', label: 'Vérifiés' },
+  { key: 'requests', label: 'Sur demande' },
+] as const;
+
+export default function Settings() {
+  const [state, setState] = useState<AppState | null>(null);
+  const load = useCallback(() => { api.state().then(setState).catch(() => {}); }, []);
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  async function verify() { const s = await api.verify(); if (s?.state) setState(s.state); }
+  async function setPolicy(key: string) { const s = await api.saveProfile({ dmPolicy: key } as any); if (s?.state) setState(s.state); }
+
+  if (!state) return <SafeAreaView style={styles.safe} edges={['top']} />;
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.back}>
+          <Ionicons name="chevron-back" size={26} color={theme.primary} />
+        </Pressable>
+        <Text style={styles.title}>Paramètres</Text>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
+        {/* Sécurité */}
+        <Text style={styles.section}>Sécurité</Text>
+        <View style={styles.card}>
+          <View style={styles.rowBetween}>
+            <View style={styles.rowLeft}>
+              <Ionicons name="shield-checkmark" size={20} color={state.me.verified ? theme.success : theme.muted} />
+              <View>
+                <Text style={styles.rowLabel}>Profil vérifié</Text>
+                <Text style={styles.rowSub}>Rassure et débloque plus de contacts</Text>
+              </View>
+            </View>
+            {state.me.verified ? (
+              <Text style={{ color: theme.success, fontWeight: '800' }}>Vérifié ✓</Text>
+            ) : (
+              <Pressable style={styles.smallBtn} onPress={verify}><Text style={styles.smallBtnTxt}>Vérifier</Text></Pressable>
+            )}
+          </View>
+        </View>
+
+        {/* Messages */}
+        <Text style={styles.section}>Messages</Text>
+        <View style={styles.card}>
+          <Text style={styles.rowLabel}>Qui peut t'écrire</Text>
+          <View style={styles.segs}>
+            {POLICIES.map((p) => {
+              const active = (state.me.dmPolicy || 'everyone') === p.key;
+              return (
+                <Pressable key={p.key} style={[styles.seg, active && styles.segActive]} onPress={() => setPolicy(p.key)}>
+                  <Text style={[styles.segTxt, active && { color: '#fff' }]}>{p.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={styles.hint}>C'est toi qui décides. « Sur demande » = tu acceptes avant de discuter.</Text>
+        </View>
+
+        <Pressable style={styles.resetRow} onPress={() => api.reset().then(load)}>
+          <Ionicons name="refresh" size={18} color={theme.muted} />
+          <Text style={styles.resetText}>Réinitialiser la démo</Text>
+        </Pressable>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: theme.bg },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.line, backgroundColor: '#fff' },
+  back: { padding: 4 },
+  title: { fontWeight: '800', color: theme.ink, fontSize: 17 },
+  wrap: { padding: 18, gap: 10 },
+  section: { fontSize: 13, fontWeight: '800', color: theme.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 8 },
+  card: { backgroundColor: '#fff', borderRadius: 18, padding: 16, gap: 10, ...shadowSoft },
+  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  rowLabel: { fontSize: 15, fontWeight: '700', color: theme.ink },
+  rowSub: { fontSize: 12, color: theme.muted, marginTop: 1 },
+  smallBtn: { backgroundColor: theme.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999 },
+  smallBtnTxt: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  segs: { flexDirection: 'row', gap: 8, marginTop: 2 },
+  seg: { flex: 1, borderWidth: 1.5, borderColor: theme.line, borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
+  segActive: { backgroundColor: theme.primary, borderColor: theme.primary },
+  segTxt: { fontSize: 12, fontWeight: '700', color: theme.muted },
+  hint: { color: theme.muted, fontSize: 12, lineHeight: 17 },
+  resetRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, marginTop: 6 },
+  resetText: { color: theme.muted, fontWeight: '700' },
+});

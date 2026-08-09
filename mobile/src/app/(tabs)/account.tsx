@@ -1,52 +1,55 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '../../components/ui';
-import { AppState, api } from '../../lib/api';
+import { AppState, Post, api } from '../../lib/api';
 import { shadow, shadowSoft, theme } from '../../lib/theme';
 
 const EMOJIS = ['🙂', '😎', '🔥', '🌺', '🎧', '📸', '🌴', '⚽', '💃', '☕', '🦋', '✨'];
-const POLICIES = [
-  { key: 'everyone', label: 'Tout le monde' },
-  { key: 'verified', label: 'Vérifiés' },
-  { key: 'requests', label: 'Sur demande' },
-] as const;
 
 export default function Account() {
   const [state, setState] = useState<AppState | null>(null);
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
   const [emoji, setEmoji] = useState('🙂');
   const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [myPosts, setMyPosts] = useState<Post[]>([]);
 
   const load = useCallback(() => {
     api.state().then((s) => {
       setState(s);
       setName(s.me.name === 'Moi' ? '' : s.me.name);
+      setPhone(s.me.phone || '');
       setBio(s.me.bio === 'Nouveau sur Doxan 👋' ? '' : s.me.bio);
       setEmoji(s.me.emoji);
     }).catch(() => {});
+    api.feed().then((d) => setMyPosts(d.posts.filter((p) => p.author.id === 'me'))).catch(() => {});
   }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   async function save() {
-    const s = await api.saveProfile({ name: name || 'Moi', bio: bio || 'Nouveau sur Doxan 👋', emoji } as any);
+    const s = await api.saveProfile({ name: name || 'Moi', bio: bio || 'Nouveau sur Doxan 👋', emoji, phone } as any);
     if (s?.state) setState(s.state);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1600);
+    setSaved(true); setTimeout(() => setSaved(false), 1600);
   }
 
-  async function verify() {
-    const s = await api.verify();
-    if (s?.state) setState(s.state);
-  }
-  async function setPolicy(key: string) {
-    const s = await api.saveProfile({ dmPolicy: key } as any);
-    if (s?.state) setState(s.state);
+  async function changePhoto() {
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.6, base64: true });
+    if (r.canceled || !r.assets?.[0]?.base64) return;
+    setUploading(true);
+    try {
+      const a = r.assets[0];
+      const up = await api.upload(`data:${a.mimeType || 'image/jpeg'};base64,${a.base64}`);
+      const s = await api.saveProfile({ photo: up.url } as any);
+      if (s?.state) setState(s.state);
+    } catch {}
+    setUploading(false);
   }
 
   if (!state) return <SafeAreaView style={styles.safe} edges={['top']} />;
@@ -55,34 +58,40 @@ export default function Account() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
+        {/* En-tête */}
+        <View style={styles.topBar}>
+          <Text style={styles.h1}>Mon profil</Text>
+          <Pressable style={styles.gear} onPress={() => router.push('/settings')}>
+            <Ionicons name="settings-outline" size={20} color={theme.ink} />
+          </Pressable>
+        </View>
+
         <View style={styles.head}>
-          <Avatar user={me as any} size={96} />
+          <Pressable onPress={changePhoto} style={styles.avatarWrap}>
+            <Avatar user={me as any} size={104} />
+            <View style={styles.camBadge}>
+              {uploading ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="camera" size={16} color="#fff" />}
+            </View>
+          </Pressable>
           <View style={styles.nameRow}>
             <Text style={styles.name}>{name || 'Ton profil'}</Text>
             {state.me.verified ? <Ionicons name="shield-checkmark" size={18} color={theme.success} /> : null}
           </View>
-          <View style={styles.statusRow}>
-            {state.premium ? (
-              <LinearGradient colors={theme.pinkGrad} style={styles.goldPill}>
-                <Ionicons name="diamond" size={12} color="#fff" />
-                <Text style={styles.goldText}>Doxan Gold</Text>
-              </LinearGradient>
-            ) : (
-              <Text style={styles.free}>Compte gratuit · {state.likesLeft} likes restants</Text>
-            )}
-          </View>
+          <Text style={styles.free}>
+            {state.premium ? '👑 Doxan Gold' : `Compte gratuit · ${state.likesLeft} likes restants`}
+          </Text>
+          <Pressable onPress={changePhoto}><Text style={styles.changePhoto}>Changer ma photo de profil</Text></Pressable>
         </View>
 
+        {/* Infos */}
         <View style={styles.card}>
           <Text style={styles.label}>Prénom</Text>
           <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Ton prénom" placeholderTextColor="#C3BCC7" />
-
+          <Text style={styles.label}>Téléphone</Text>
+          <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="+221 ..." placeholderTextColor="#C3BCC7" keyboardType="phone-pad" />
           <Text style={styles.label}>Bio</Text>
-          <TextInput
-            style={[styles.input, styles.textarea]} value={bio} onChangeText={setBio}
-            placeholder="Parle un peu de toi..." placeholderTextColor="#C3BCC7" multiline maxLength={200}
-          />
-
+          <TextInput style={[styles.input, styles.textarea]} value={bio} onChangeText={setBio}
+            placeholder="Parle un peu de toi..." placeholderTextColor="#C3BCC7" multiline maxLength={200} />
           <Text style={styles.label}>Ton emoji</Text>
           <View style={styles.emojiRow}>
             {EMOJIS.map((e) => (
@@ -91,48 +100,29 @@ export default function Account() {
               </Pressable>
             ))}
           </View>
-
-          <Pressable style={styles.save} onPress={save}>
-            <Text style={styles.saveText}>{saved ? 'Enregistré ✓' : 'Enregistrer'}</Text>
+          <Pressable style={styles.saveBtn} onPress={save}>
+            <Text style={styles.saveTxt}>{saved ? 'Enregistré ✓' : 'Enregistrer'}</Text>
           </Pressable>
         </View>
 
-        {/* Sécurité & messages */}
-        <View style={styles.card}>
-          <Text style={styles.sectionH}>Sécurité & messages</Text>
-
-          <View style={styles.rowBetween}>
-            <View style={styles.rowLeft}>
-              <Ionicons name="shield-checkmark" size={18} color={state.me.verified ? theme.success : theme.muted} />
-              <Text style={styles.rowLabel}>Profil vérifié</Text>
-            </View>
-            {state.me.verified ? (
-              <Text style={{ color: theme.success, fontWeight: '800' }}>Vérifié ✓</Text>
-            ) : (
-              <Pressable style={styles.smallBtn} onPress={verify}>
-                <Text style={styles.smallBtnTxt}>Vérifier</Text>
+        {/* Mes posts */}
+        <Text style={styles.sectionH}>Mes posts</Text>
+        {myPosts.length === 0 ? (
+          <Text style={styles.emptyPosts}>Tu n'as pas encore publié. Va dans le Feed pour poster ✨</Text>
+        ) : (
+          <View style={styles.grid}>
+            {myPosts.map((p) => (
+              <Pressable key={p.id} style={styles.tile} onPress={() => router.push(`/post/${p.id}`)}>
+                {p.photo ? (
+                  <Image source={{ uri: p.photo }} resizeMode="cover" style={styles.tileImg} />
+                ) : (
+                  <View style={styles.tileText}><Text style={styles.tileTextBody} numberOfLines={4}>{p.body}</Text></View>
+                )}
               </Pressable>
-            )}
+            ))}
           </View>
-
-          <Text style={[styles.label, { marginTop: 14 }]}>Qui peut t'écrire</Text>
-          <View style={styles.segs}>
-            {POLICIES.map((p) => {
-              const active = (state.me.dmPolicy || 'everyone') === p.key;
-              return (
-                <Pressable key={p.key} style={[styles.seg, active && styles.segActive]} onPress={() => setPolicy(p.key)}>
-                  <Text style={[styles.segTxt, active && { color: '#fff' }]}>{p.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <Text style={styles.hint}>C'est toi qui décides qui peut te contacter. « Sur demande » = tu acceptes avant de discuter.</Text>
-        </View>
-
-        <Pressable style={styles.resetRow} onPress={() => api.reset().then(load)}>
-          <Ionicons name="refresh" size={18} color={theme.muted} />
-          <Text style={styles.resetText}>Réinitialiser la démo</Text>
-        </Pressable>
+        )}
+        <View style={{ height: 20 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -141,24 +131,17 @@ export default function Account() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.bg },
   wrap: { padding: 18, gap: 16 },
-  head: { alignItems: 'center', gap: 8, paddingTop: 8 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  h1: { fontSize: 26, fontWeight: '800', color: theme.ink },
+  gear: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...shadowSoft },
+
+  head: { alignItems: 'center', gap: 6 },
+  avatarWrap: { position: 'relative' },
+  camBadge: { position: 'absolute', right: -2, bottom: -2, width: 34, height: 34, borderRadius: 17, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: theme.bg },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   name: { fontSize: 22, fontWeight: '800', color: theme.ink },
-  sectionH: { fontSize: 13, fontWeight: '800', color: theme.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  rowLabel: { fontSize: 15, fontWeight: '700', color: theme.ink },
-  smallBtn: { backgroundColor: theme.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999 },
-  smallBtnTxt: { color: '#fff', fontWeight: '800', fontSize: 13 },
-  segs: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  seg: { flex: 1, borderWidth: 1.5, borderColor: theme.line, borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
-  segActive: { backgroundColor: theme.primary, borderColor: theme.primary },
-  segTxt: { fontSize: 12, fontWeight: '700', color: theme.muted },
-  hint: { color: theme.muted, fontSize: 12, marginTop: 8, lineHeight: 17 },
-  statusRow: { marginTop: 2 },
-  goldPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
-  goldText: { color: '#fff', fontWeight: '800', fontSize: 12 },
   free: { color: theme.muted, fontWeight: '600' },
+  changePhoto: { color: theme.primary, fontWeight: '800', marginTop: 2 },
 
   card: { backgroundColor: '#fff', borderRadius: 20, padding: 18, gap: 8, ...shadowSoft },
   label: { fontSize: 12, fontWeight: '800', color: theme.muted, marginTop: 8 },
@@ -167,9 +150,14 @@ const styles = StyleSheet.create({
   emojiRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   emojiBtn: { width: 44, height: 44, borderRadius: 12, borderWidth: 2, borderColor: theme.line, alignItems: 'center', justifyContent: 'center' },
   emojiSel: { borderColor: theme.primary, backgroundColor: '#FFF0F5' },
-  save: { backgroundColor: theme.primary, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 14, ...shadow },
-  saveText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  saveBtn: { backgroundColor: theme.primary, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 14, ...shadow },
+  saveTxt: { color: '#fff', fontWeight: '800', fontSize: 15 },
 
-  resetRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8 },
-  resetText: { color: theme.muted, fontWeight: '700' },
+  sectionH: { fontSize: 13, fontWeight: '800', color: theme.muted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  emptyPosts: { color: theme.muted, textAlign: 'center', paddingVertical: 16 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  tile: { width: '31.5%', aspectRatio: 1, borderRadius: 14, overflow: 'hidden', backgroundColor: '#fff', ...shadowSoft },
+  tileImg: { width: '100%', height: '100%' },
+  tileText: { flex: 1, padding: 8, alignItems: 'center', justifyContent: 'center' },
+  tileTextBody: { fontSize: 12, color: theme.ink, textAlign: 'center' },
 });

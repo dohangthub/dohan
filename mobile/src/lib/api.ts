@@ -26,6 +26,8 @@ export type User = {
   grad: [string, string];
   emoji: string;
   online: boolean;
+  photo?: string | null;
+  phone?: string | null;
   verified?: boolean;
   dmPolicy?: 'everyone' | 'verified' | 'requests';
 };
@@ -139,6 +141,11 @@ export function photoUrl(u: User, w = 600, h = 800): string | null {
   const id = u && PHOTOS[u.id];
   if (!id) return null;
   return `https://images.unsplash.com/photo-${id}?w=${w}&h=${h}&fit=crop&crop=faces&q=80`;
+}
+
+// Photo à afficher : photo perso uploadée en priorité, sinon portrait seed
+export function avatarUri(u: User, w = 600, h = 800): string | null {
+  return (u && u.photo) || photoUrl(u, w, h);
 }
 
 // Helpers d'affichage (données non fournies par l'API démo)

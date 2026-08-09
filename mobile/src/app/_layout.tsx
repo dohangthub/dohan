@@ -33,6 +33,7 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="chat/[id]" />
             <Stack.Screen name="post/[id]" />
+            <Stack.Screen name="settings" />
           </Stack>
         </View>
       </View>
