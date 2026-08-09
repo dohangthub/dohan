@@ -227,13 +227,14 @@ async function getState() {
   const cands = await sb('GET', 'profiles?is_me=eq.false&order=seq.asc&select=*');
   const swipes = await sb('GET', `swipes?actor_id=eq.${ME}&select=target_id,action`);
   const swipeMap = {}; swipes.forEach((s) => (swipeMap[s.target_id] = s.action));
+  const blocked = (me && me.blocked) || [];
 
   const deck = cands
-    .filter((u) => !swipeMap[u.id])
+    .filter((u) => !swipeMap[u.id] && !blocked.includes(u.id))
     .map((u) => ({ u, sc: deckScore(u, me) }))
     .sort((a, b) => b.sc - a.sc || (a.u.seq || 0) - (b.u.seq || 0))
     .map((x) => pubUser(x.u));
-  const likedYou = cands.filter((u) => u.likes_me && swipeMap[u.id] !== 'pass');
+  const likedYou = cands.filter((u) => u.likes_me && swipeMap[u.id] !== 'pass' && !blocked.includes(u.id));
 
   const matchesRaw = await sb('GET', `matches?user_a=eq.${ME}&order=id.asc&select=*`);
   let msgsByMatch = {};
