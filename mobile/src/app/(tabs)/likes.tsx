@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Dimensions, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chip, PremiumPill, ScreenTitle } from '../../components/ui';
@@ -15,23 +15,9 @@ const TABS = ['Tous', 'Récents', 'Proches'];
 export default function Likes() {
   const [state, setState] = useState<AppState | null>(null);
   const [tab, setTab] = useState(0);
-  const [showPay, setShowPay] = useState(false);
-  const [pay, setPay] = useState<string>('Wave');
 
   const load = useCallback(() => { api.state().then(setState).catch(() => {}); }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
-
-  const [paying, setPaying] = useState(false);
-  async function pay2(kind: 'pass' | 'credits', item: string) {
-    setPaying(true);
-    const method = pay === 'Orange Money' ? 'om' : 'wave';
-    const r = await api.payInit(kind, item, method, (state && state.me.phone) || '');
-    setPaying(false);
-    if (r?.simulated && r.state) { setState(r.state); setShowPay(false); return; }   // repli démo
-    if (r?.payment_url) { setShowPay(false); Linking.openURL(r.payment_url); setTimeout(load, 5000); return; } // vrai paiement
-  }
-  const buyPass = (plan: 'day' | 'weekend' | 'week') => pay2('pass', plan);
-  const buyCredits = (pack: 'small' | 'medium' | 'large') => pay2('credits', pack);
 
   if (!state) return <SafeAreaView style={styles.safe} edges={['top']} />;
 
@@ -44,7 +30,7 @@ export default function Likes() {
       <View style={styles.pad}>
         <ScreenTitle
           title="Like You"
-          right={premium ? <PremiumPill /> : <Pressable onPress={() => setShowPay(true)}><PremiumPill /></Pressable>}
+          right={<Pressable onPress={() => router.push('/store')}><PremiumPill /></Pressable>}
         />
         <View style={styles.tabs}>
           {TABS.map((t, i) => (
@@ -64,65 +50,13 @@ export default function Likes() {
             <Ionicons name="diamond" size={30} color={theme.primary} />
             <Text style={styles.lockTitle}>{count} personnes t'ont liké</Text>
             <Text style={styles.lockSub}>Passe en Premium pour voir qui craque pour toi.</Text>
-            <Pressable style={styles.unlockBtn} onPress={() => setShowPay(true)}>
-              <Text style={styles.unlockText}>Débloquer</Text>
+            <Pressable style={styles.unlockBtn} onPress={() => router.push('/store')}>
+              <Text style={styles.unlockText}>Voir la boutique</Text>
             </Pressable>
           </View>
         ) : null}
         <View style={{ height: 20 }} />
       </ScrollView>
-
-      {/* Boutique */}
-      {showPay ? (
-        <View style={styles.overlay}>
-          <View style={styles.sheet}>
-            <Pressable style={styles.sheetX} onPress={() => setShowPay(false)}>
-              <Ionicons name="close" size={20} color={theme.muted} />
-            </Pressable>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.sheetTitle}>Boutique SenLove</Text>
-
-              <Text style={styles.payLabel}>Payer avec</Text>
-              <View style={styles.payRow}>
-                {['Wave', 'Orange Money', 'Free Money'].map((m) => (
-                  <Pressable key={m} style={[styles.pay, pay === m && styles.paySel]} onPress={() => setPay(m)}>
-                    <Text style={[styles.payText, pay === m && { color: theme.primary }]}>{m}</Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              <Text style={styles.storeSection}>🎟️  Passes — premium temporaire</Text>
-              {[
-                { key: 'day', label: '24 heures', price: '300 FCFA' },
-                { key: 'weekend', label: 'Weekend', price: '700 FCFA' },
-                { key: 'week', label: 'Semaine', price: '1 500 FCFA', best: true },
-              ].map((p) => (
-                <Pressable key={p.key} style={[styles.buyRow, p.best && styles.buyRowBest]} onPress={() => buyPass(p.key as any)}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.buyLabel}>{p.label}{p.best ? '  ⭐ populaire' : ''}</Text>
-                    <Text style={styles.buySub}>Voir qui t'a liké · likes illimités · incognito</Text>
-                  </View>
-                  <Text style={styles.buyPrice}>{p.price}</Text>
-                </Pressable>
-              ))}
-
-              <Text style={styles.storeSection}>💎  Crédits — boost, super-crush…</Text>
-              {[
-                { key: 'small', label: '500 crédits', price: '500 FCFA' },
-                { key: 'medium', label: '1 000 crédits', price: '1 000 FCFA' },
-                { key: 'large', label: '2 000 crédits', price: '2 000 FCFA' },
-              ].map((p) => (
-                <Pressable key={p.key} style={styles.buyRow} onPress={() => buyCredits(p.key as any)}>
-                  <Text style={[styles.buyLabel, { flex: 1 }]}>{p.label}</Text>
-                  <Text style={styles.buyPrice}>{p.price}</Text>
-                </Pressable>
-              ))}
-
-              <Text style={styles.demoNote}>Démo — aucun paiement réel (Wave/OM à intégrer).</Text>
-            </ScrollView>
-          </View>
-        </View>
-      ) : null}
     </SafeAreaView>
   );
 }

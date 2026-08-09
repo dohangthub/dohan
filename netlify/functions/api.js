@@ -115,8 +115,9 @@ async function getState() {
     likedYouCount: likedYou.length, likedYou: premium ? likedYou.map(pubUser) : [], icebreakers: ICEBREAKERS,
   };
 }
-const PASS_DAYS = { day: 1, weekend: 2, week: 7 };
-const PASS_PRICES = { day: 300, weekend: 700, week: 1500 };
+const PASS_DAYS = { day: 1, week: 7, month: 30 };
+const PASS_PRICES = { day: 300, week: 1000, month: 3000 };
+const BOOST_PRICE = 300;
 const CREDIT_PACKS = { small: 500, medium: 1000, large: 2000 };
 const BOOST_COST = 200;
 
@@ -126,16 +127,15 @@ const UNITECH_BASE = 'https://api.unitech.sn/api';
 const PUBLIC_URL = process.env.PUBLIC_URL || 'https://luminous-sunburst-21e305.netlify.app';
 function priceOf(kind, item) {
   if (kind === 'pass') return PASS_PRICES[item] || 0;
-  if (kind === 'credits') return CREDIT_PACKS[item] || 0;
+  if (kind === 'boost') return BOOST_PRICE;
   return 0;
 }
 async function fulfill(kind, item) {
   if (kind === 'pass') {
     const days = PASS_DAYS[item] || 1;
     await sb('PATCH', `profiles?id=eq.${ME}`, { premium_until: new Date(Date.now() + days * 86400000).toISOString() });
-  } else if (kind === 'credits') {
-    const [me] = await sb('GET', `profiles?id=eq.${ME}&select=*`);
-    await sb('PATCH', `profiles?id=eq.${ME}`, { credits: (me.credits || 0) + (CREDIT_PACKS[item] || 0) });
+  } else if (kind === 'boost') {
+    await sb('PATCH', `profiles?id=eq.${ME}`, { boost_until: new Date(Date.now() + 3600000).toISOString() });
   }
 }
 async function unitechCreate(method, amount, phone, desc) {
@@ -267,13 +267,18 @@ exports.handler = async (event) => {
       const expected = UNITECH_KEY ? crypto.createHmac('sha256', UNITECH_KEY).update(raw).digest('hex') : '';
       if (!UNITECH_KEY || !sig || sig !== expected) return J(401, { error: 'signature invalide' });
       let p = {}; try { p = JSON.parse(raw); } catch {}
-      if (p.event === 'payment_completed' && p.reference) {
-        const [order] = await sb('GET', `orders?reference=eq.${encodeURIComponent(p.reference)}&select=*`);
+      const ev = String(p.event || ''); const st = String(p.status || '').toLowerCase();
+      const success = /success|complet/i.test(ev) || st === 'completed' || st === 'success';
+      const failed = /fail|expir|cancel/i.test(ev);
+      if (success) {
+        let order = null;
+        if (p.reference) [order] = await sb('GET', `orders?reference=eq.${encodeURIComponent(p.reference)}&select=*`);
+        if (!order) { const pend = await sb('GET', `orders?user_id=eq.${ME}&status=eq.pending&order=created_at.desc&limit=1&select=*`); order = pend[0]; }
         if (order && order.status !== 'completed') {
           await fulfill(order.kind, order.item);
-          await sb('PATCH', `orders?reference=eq.${encodeURIComponent(p.reference)}`, { status: 'completed' });
+          await sb('PATCH', `orders?reference=eq.${encodeURIComponent(order.reference)}`, { status: 'completed' });
         }
-      } else if ((p.event === 'payment_failed' || p.event === 'payment_expired') && p.reference) {
+      } else if (failed && p.reference) {
         await sb('PATCH', `orders?reference=eq.${encodeURIComponent(p.reference)}`, { status: 'failed' });
       }
       return J(200, { ok: true });
