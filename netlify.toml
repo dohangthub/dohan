@@ -1,11 +1,16 @@
-# Déploiement du frontend Expo (web) sur Netlify.
-# L'app appelle l'API Railway (https://dohan-production.up.railway.app) automatiquement.
+# Doxan sur Netlify : frontend (Expo web) + API (Netlify Function). Zéro Railway.
 [build]
-  base = "mobile"
-  command = "npx expo export -p web"
-  publish = "dist"
+  command = "cd mobile && npm install && npx expo export -p web"
+  publish = "mobile/dist"
+  functions = "netlify/functions"
 
-# Routage SPA : les routes inconnues (ex. /chat/7) retombent sur l'app
+# /api/* -> la fonction (doit passer AVANT le fallback SPA)
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# Routage SPA : le reste retombe sur l'app
 [[redirects]]
   from = "/*"
   to = "/index.html"

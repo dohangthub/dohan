@@ -1,16 +1,17 @@
 import { Platform } from 'react-native';
 
-// API Node+Supabase.
-// - Web sur localhost (dev) : localhost:3000
-// - Web déployé OU téléphone/natif : API Railway en ligne
-const RAILWAY = 'https://dohan-production.up.railway.app';
+// API = Netlify Function (même domaine que le frontend). Zéro Railway.
+// - Web sur localhost (dev)   : serveur Node local (localhost:3000)
+// - Web déployé (Netlify)     : même origine -> /api/* -> la fonction
+// - Téléphone / natif         : l'URL Netlify de prod
+const PROD = 'https://luminous-sunburst-21e305.netlify.app';
 function resolveBase(): string {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const h = window.location.hostname;
     if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:3000';
-    return RAILWAY;
+    return ''; // même origine (Netlify) -> les appels /api/* atteignent la fonction
   }
-  return RAILWAY; // téléphone / natif → API en ligne
+  return PROD; // natif
 }
 export const API_BASE = resolveBase();
 
