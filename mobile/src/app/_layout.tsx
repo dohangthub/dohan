@@ -40,6 +40,7 @@ export default function RootLayout() {
             <Stack.Screen name="post/[id]" />
             <Stack.Screen name="settings" />
             <Stack.Screen name="store" />
+            <Stack.Screen name="edit-profile" />
             <Stack.Screen name="welcome" />
             <Stack.Screen name="login" />
             <Stack.Screen name="signup" />
