@@ -100,15 +100,6 @@ export default function Account() {
           <Text style={hasBio ? styles.bio : styles.bioEmpty}>{hasBio ? me.bio : 'Ajoute une bio pour te démarquer 💬'}</Text>
         </View>
 
-        {/* Infos */}
-        <View style={styles.card}>
-          <Text style={styles.cardH}>Infos</Text>
-          <InfoRow icon="happy-outline" label="Genre" value={genderLabel} />
-          <InfoRow icon="calendar-outline" label="Âge" value={me.age ? `${me.age} ans` : null} />
-          <InfoRow icon="location-outline" label="Ville" value={me.city} />
-          <InfoRow icon="call-outline" label="Téléphone" value={me.phone} last />
-        </View>
-
         {/* Publications */}
         <View style={styles.postsHead}>
           <Text style={styles.sectionH}>Mes publications</Text>
@@ -143,16 +134,6 @@ function Pill({ icon, label }: { icon: any; label: string }) {
     <View style={styles.pill}><Ionicons name={icon} size={12} color="#fff" /><Text style={styles.pillTxt}>{label}</Text></View>
   );
 }
-function InfoRow({ icon, label, value, last }: { icon: any; label: string; value?: string | null; last?: boolean }) {
-  return (
-    <View style={[styles.infoRow, !last && styles.infoBorder]}>
-      <Ionicons name={icon} size={18} color={theme.muted} />
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={value ? styles.infoValue : styles.infoEmpty}>{value || 'Non renseigné'}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.bg },
   hero: { height: 340, justifyContent: 'flex-end', backgroundColor: '#ddd' },

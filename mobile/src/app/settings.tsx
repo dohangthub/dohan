@@ -12,6 +12,17 @@ const POLICIES = [
   { key: 'verified', label: 'Vérifiés' },
   { key: 'requests', label: 'Sur demande' },
 ] as const;
+const GENDER: Record<string, string> = { H: 'Homme', F: 'Femme', A: 'Autre' };
+
+function InfoRow({ icon, label, value, last }: { icon: any; label: string; value?: string | null; last?: boolean }) {
+  return (
+    <View style={[styles.infoRow, !last && styles.infoBorder]}>
+      <Ionicons name={icon} size={18} color={theme.muted} />
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={value ? styles.infoValue : styles.infoEmpty}>{value || 'Non renseigné'}</Text>
+    </View>
+  );
+}
 
 export default function Settings() {
   const [state, setState] = useState<AppState | null>(null);
@@ -33,6 +44,18 @@ export default function Settings() {
       </View>
 
       <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
+        {/* Mes infos */}
+        <View style={styles.secRow}>
+          <Text style={styles.section}>Mes infos</Text>
+          <Pressable onPress={() => router.push('/edit-profile')}><Text style={styles.editLink}>Modifier</Text></Pressable>
+        </View>
+        <View style={styles.card}>
+          <InfoRow icon="happy-outline" label="Genre" value={GENDER[state.me.gender]} />
+          <InfoRow icon="calendar-outline" label="Âge" value={state.me.age ? `${state.me.age} ans` : null} />
+          <InfoRow icon="location-outline" label="Ville" value={state.me.city} />
+          <InfoRow icon="call-outline" label="Téléphone" value={state.me.phone} last />
+        </View>
+
         {/* Sécurité */}
         <Text style={styles.section}>Sécurité</Text>
         <View style={styles.card}>
@@ -85,6 +108,13 @@ const styles = StyleSheet.create({
   title: { fontWeight: '800', color: theme.ink, fontSize: 17 },
   wrap: { padding: 18, gap: 10 },
   section: { fontSize: 13, fontWeight: '800', color: theme.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 8 },
+  secRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  editLink: { color: theme.primary, fontWeight: '800', fontSize: 13 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
+  infoBorder: { borderBottomWidth: 1, borderBottomColor: theme.line },
+  infoLabel: { flex: 1, color: theme.ink, fontWeight: '600', fontSize: 15 },
+  infoValue: { color: theme.ink, fontWeight: '700', fontSize: 15 },
+  infoEmpty: { color: theme.muted, fontSize: 14 },
   card: { backgroundColor: '#fff', borderRadius: 18, padding: 16, gap: 10, ...shadowSoft },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
