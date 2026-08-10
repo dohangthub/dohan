@@ -6,10 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '../components/ui';
 import { AppState, api } from '../lib/api';
+import { COMMUNES } from '../lib/communes';
 import { pickImageDataUrl } from '../lib/pickImage';
 import { shadow, theme } from '../lib/theme';
-
-const CITIES = ['Dakar', 'Thiès', 'Saint-Louis', 'Rufisque', 'Mbour', 'Ziguinchor'];
 
 export default function EditProfile() {
   const [state, setState] = useState<AppState | null>(null);
@@ -98,9 +97,9 @@ export default function EditProfile() {
           </View>
         </View>
 
-        <Text style={styles.label}>Ville</Text>
+        <Text style={styles.label}>Commune / quartier</Text>
         <View style={styles.cities}>
-          {CITIES.map((c) => (
+          {COMMUNES.map((c) => (
             <Pressable key={c} style={[styles.cityChip, city === c && styles.cityOn]} onPress={() => setCity(c)}>
               <Text style={[styles.cityTxt, city === c && { color: '#fff' }]}>{c}</Text>
             </Pressable>

@@ -65,10 +65,15 @@ function pubUser(u) {
   };
 }
 
+const DAKAR = new Set(['Dakar-Plateau', 'Médina', 'Grand Yoff', 'Parcelles Assainies', 'Yoff', 'Almadies', 'Ngor', 'Ouakam', 'Point E / Mermoz', 'Grand Dakar', 'Liberté / HLM', 'Pikine', 'Guédiawaye', 'Rufisque', 'Keur Massar', 'Dakar']);
+const regionOf = (c) => (DAKAR.has(c) ? 'Dakar' : c);
 function deckScore(u, me) {
   let s = 0;
   if (u.likes_me) s += 100;                              // réciprocité (matchs instantanés)
-  if (me && me.city && u.city === me.city) s += 40;      // proximité
+  if (me && me.city) {
+    if (u.city === me.city) s += 40;                     // même commune
+    else if (regionOf(u.city) === regionOf(me.city)) s += 20; // même région
+  }
   if (u.online) s += 25;                                 // activité récente
   if (VERIFIED.has(u.id) || u.verified) s += 15;         // vérifié
   if (u.bio && u.bio.length > 15) s += 8;                // profil complet

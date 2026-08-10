@@ -5,10 +5,10 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { api } from '../lib/api';
+import { COMMUNES } from '../lib/communes';
 
 const V = { bg: '#FFFFFF', violet: '#7C3AED', violetLight: '#9B6DFF', ink: '#1C1630', muted: '#6E6690', line: '#EBE5F7', field: '#F6F2FF' };
 const GRAD = ['#9B6DFF', '#6D28D9'] as [string, string];
-const CITIES = ['Dakar', 'Thiès', 'Saint-Louis', 'Rufisque', 'Mbour', 'Ziguinchor', 'Autre'];
 const TOTAL = 6;
 
 export default function Signup() {
@@ -91,9 +91,9 @@ export default function Signup() {
         )}
 
         {step === 5 && (
-          <Step title="Tu es où ?" sub="Pour rencontrer des gens près de toi.">
+          <Step title="Tu es où ?" sub="Ta commune / quartier — pour rencontrer des gens tout près.">
             <View style={styles.cities}>
-              {CITIES.map((c) => (
+              {COMMUNES.map((c) => (
                 <Pressable key={c} style={[styles.cityChip, city === c && styles.cityChipOn]} onPress={() => setCity(c)}>
                   <Text style={[styles.cityTxt, city === c && { color: '#fff' }]}>{c}</Text>
                 </Pressable>

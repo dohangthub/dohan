@@ -52,7 +52,7 @@ export default function Settings() {
         <View style={styles.card}>
           <InfoRow icon="happy-outline" label="Genre" value={GENDER[state.me.gender]} />
           <InfoRow icon="calendar-outline" label="Âge" value={state.me.age ? `${state.me.age} ans` : null} />
-          <InfoRow icon="location-outline" label="Ville" value={state.me.city} />
+          <InfoRow icon="location-outline" label="Commune" value={state.me.city} />
           <InfoRow icon="call-outline" label="Téléphone" value={state.me.phone} last />
         </View>
 

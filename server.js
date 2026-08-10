@@ -207,10 +207,15 @@ function pubUser(u) {
 }
 
 // ---------- Algo de matching : score d'un candidat pour "moi" ----------
+const DAKAR = new Set(['Dakar-Plateau', 'Médina', 'Grand Yoff', 'Parcelles Assainies', 'Yoff', 'Almadies', 'Ngor', 'Ouakam', 'Point E / Mermoz', 'Grand Dakar', 'Liberté / HLM', 'Pikine', 'Guédiawaye', 'Rufisque', 'Keur Massar', 'Dakar']);
+const regionOf = (c) => (DAKAR.has(c) ? 'Dakar' : c);
 function deckScore(u, me) {
   let s = 0;
   if (u.likes_me) s += 100;                              // réciprocité (matchs instantanés) — levier #1
-  if (me && me.city && u.city === me.city) s += 40;      // proximité (même ville)
+  if (me && me.city) {
+    if (u.city === me.city) s += 40;                     // même commune / quartier
+    else if (regionOf(u.city) === regionOf(me.city)) s += 20; // même région (ex: Dakar)
+  }
   if (u.online) s += 25;                                 // activité récente
   if (VERIFIED.has(u.id) || u.verified) s += 15;         // profil vérifié (confiance)
   if (u.bio && u.bio.length > 15) s += 8;                // profil complet
