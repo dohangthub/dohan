@@ -244,12 +244,17 @@ const MEDIA_MIN_MSGS = 5; // vocaux & médias débloqués après 5 messages éch
 const FREE_DAILY_MSGS = 15; // messages/jour en gratuit ; illimité en Premium
 
 // Masque les numéros de téléphone pour pousser au Premium (anti "on se donne le numéro et on quitte l'app").
-// Robuste à l'obfuscation : masque toute séquence d'au moins 7 chiffres où chaque chiffre est séparé
-// du suivant par ≤3 caractères quelconques (espaces, * . - / lettres, etc.). Ex: "77*333*44*67", "7 7 3 3 3 4 4".
-const PHONE_RE = /\+?\d(?:[^\d\n]{0,3}\d){6,}/g;
+// Robuste à l'obfuscation :
+//  1) tout "mot" (sans espace) contenant >=6 chiffres est masqué, peu importe les caractères entre
+//     (ex: "77-----*333*____44*-_-67", "7ezgz7gf7gy6v6hg5") ;
+//  2) numéros écrits avec des espaces : 7+ chiffres séparés par <=3 caractères (ex: "77 123 45 67").
+// Le texte normal est épargné (âge/taille/heure/adresse : peu de chiffres par mot, groupes espacés).
+const MASK = '📵 numéro masqué — passe Premium pour le voir';
 function maskPhones(text) {
   if (!text) return text;
-  return String(text).replace(PHONE_RE, '📵 numéro masqué — passe Premium pour le voir');
+  let out = String(text).replace(/\S+/g, (tok) => ((tok.match(/\d/g) || []).length >= 6 ? MASK : tok));
+  out = out.replace(/\+?\d(?:[^\d\n]{0,3}\d){6,}/g, MASK);
+  return out;
 }
 const mapMsg = (x, mask) => ({
   from: x.sender === ME ? 'me' : 'them',

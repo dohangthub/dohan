@@ -95,10 +95,13 @@ function seekingOf(u) {
 }
 const MEDIA_MIN_MSGS = 5;
 const FREE_DAILY_MSGS = 15;
-const PHONE_RE = /\+?\d(?:[^\d\n]{0,3}\d){6,}/g;
+// Masquage robuste : (1) tout "mot" avec >=6 chiffres ; (2) numéros espacés (7+ chiffres, gaps <=3).
+const MASK = '📵 numéro masqué — passe Premium pour le voir';
 function maskPhones(text) {
   if (!text) return text;
-  return String(text).replace(PHONE_RE, '📵 numéro masqué — passe Premium pour le voir');
+  let out = String(text).replace(/\S+/g, (tok) => ((tok.match(/\d/g) || []).length >= 6 ? MASK : tok));
+  out = out.replace(/\+?\d(?:[^\d\n]{0,3}\d){6,}/g, MASK);
+  return out;
 }
 const mapMsg = (x, mask) => ({
   from: x.sender === ME ? 'me' : 'them',
