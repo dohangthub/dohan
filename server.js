@@ -199,6 +199,7 @@ function readRaw(req) {
 function pubUser(u) {
   return {
     id: u.id, name: u.name, age: u.age, city: u.city, gender: u.gender,
+    region: u.region || regionOf(u.city) || null,
     seeking: u.seeking || null,
     bio: u.bio, interests: u.interests || [], grad: u.grad, emoji: u.emoji, online: u.online,
     photo: u.photo || null,
@@ -207,9 +208,29 @@ function pubUser(u) {
   };
 }
 
+// ---------- Localisation : Région -> communes/quartiers ----------
+const COMMUNES_BY_REGION = {
+  'Dakar': ['Dakar-Plateau', 'Médina', 'Fann / Point E', 'Mermoz / Sacré-Cœur', 'Grand Dakar', 'Liberté / HLM', 'Grand Yoff', 'Ouakam', 'Ngor', 'Almadies', 'Yoff', 'Ouest Foire', 'Parcelles Assainies', 'Grand Médine', "Patte d'Oie", 'Hann / Bel-Air', 'Pikine', 'Guédiawaye', 'Thiaroye', 'Keur Massar', 'Malika', 'Yeumbeul', 'Rufisque', 'Bargny', 'Diamniadio', 'Sébikotane'],
+  'Thiès': ['Thiès', 'Mbour', 'Saly', 'Tivaouane', 'Joal-Fadiouth', 'Pout', 'Khombole', 'Mékhé', 'Nguékhokh'],
+  'Diourbel': ['Diourbel', 'Touba', 'Mbacké', 'Bambey', 'Ndoulo'],
+  'Saint-Louis': ['Saint-Louis', 'Richard-Toll', 'Dagana', 'Podor', 'Mpal', 'Ross Béthio'],
+  'Kaolack': ['Kaolack', 'Guinguinéo', 'Nioro du Rip', 'Kahone', 'Ndoffane'],
+  'Ziguinchor': ['Ziguinchor', 'Bignona', 'Oussouye', 'Cap Skirring', 'Thionck-Essyl'],
+  'Louga': ['Louga', 'Kébémer', 'Linguère', 'Dahra'],
+  'Fatick': ['Fatick', 'Foundiougne', 'Gossas', 'Sokone', 'Passy', 'Diofior'],
+  'Tambacounda': ['Tambacounda', 'Bakel', 'Goudiry', 'Koumpentoum'],
+  'Kolda': ['Kolda', 'Vélingara', 'Médina Yoro Foulah'],
+  'Matam': ['Matam', 'Ourossogui', 'Kanel', 'Ranérou', 'Thilogne'],
+  'Kaffrine': ['Kaffrine', 'Koungheul', 'Malem Hodar', 'Birkelane'],
+  'Kédougou': ['Kédougou', 'Salémata', 'Saraya'],
+  'Sédhiou': ['Sédhiou', 'Bounkiling', 'Goudomp'],
+};
+const REGIONS_SET = new Set(Object.keys(COMMUNES_BY_REGION));
+const REGION_OF_COMMUNE = {};
+for (const [r, list] of Object.entries(COMMUNES_BY_REGION)) for (const c of list) REGION_OF_COMMUNE[c] = r;
+const regionOf = (v) => (!v ? null : REGIONS_SET.has(v) ? v : (REGION_OF_COMMUNE[v] || v));
+
 // ---------- Algo de matching : score d'un candidat pour "moi" ----------
-const DAKAR = new Set(['Dakar-Plateau', 'Médina', 'Grand Yoff', 'Parcelles Assainies', 'Yoff', 'Almadies', 'Ngor', 'Ouakam', 'Point E / Mermoz', 'Grand Dakar', 'Liberté / HLM', 'Pikine', 'Guédiawaye', 'Rufisque', 'Keur Massar', 'Dakar']);
-const regionOf = (c) => (DAKAR.has(c) ? 'Dakar' : c);
 
 // Qui l'utilisateur veut voir. Déduit du genre par défaut (hétéro), surchargeable via u.seeking.
 function seekingOf(u) {
@@ -218,6 +239,9 @@ function seekingOf(u) {
   if (u && u.gender === 'F') return 'H';
   return 'all'; // 'A' / inconnu : ne filtre pas
 }
+// Une photo réelle est requise pour apparaître dans l'accueil (anti "photo de chien/matelas" niveau 1).
+// Les profils démo (u1..u12) mappent une photo Unsplash => considérés comme ayant une photo.
+function hasPhoto(u) { return !!(u && (u.photo || PHOTOS[u.id])); }
 // Compatibilité de genre MUTUELLE : je le vois si son genre me correspond ET que je corresponds à sa recherche.
 function genderMatch(me, u) {
   if (!me || !u) return true;
@@ -230,10 +254,10 @@ function genderMatch(me, u) {
 function deckScore(u, me) {
   let s = 0;
   if (u.likes_me) s += 100;                              // réciprocité (matchs instantanés) — levier #1
-  if (me && me.city) {
-    if (u.city === me.city) s += 40;                     // même commune / quartier
-    else if (regionOf(u.city) === regionOf(me.city)) s += 20; // même région (ex: Dakar)
-  }
+  const myReg = (me && (me.region || regionOf(me.city))) || null;
+  const uReg = u.region || regionOf(u.city);
+  if (me && me.city && u.city && me.city === u.city) s += 40;   // même commune / quartier
+  else if (myReg && uReg && myReg === uReg) s += 20;            // même région
   if (u.online) s += 25;                                 // activité récente
   if (VERIFIED.has(u.id) || u.verified) s += 15;         // profil vérifié (confiance)
   if (u.bio && u.bio.length > 15) s += 8;                // profil complet
@@ -253,7 +277,7 @@ async function getState() {
   const blocked = (me && me.blocked) || [];
 
   const deck = cands
-    .filter((u) => !swipeMap[u.id] && !blocked.includes(u.id) && genderMatch(me, u))
+    .filter((u) => !swipeMap[u.id] && !blocked.includes(u.id) && genderMatch(me, u) && hasPhoto(u))
     .map((u) => ({ u, sc: deckScore(u, me) }))
     .sort((a, b) => b.sc - a.sc || (a.u.seq || 0) - (b.u.seq || 0))
     .map((x) => pubUser(x.u));
@@ -340,7 +364,8 @@ async function api(req, res, url) {
     const patch = {};
     if (b.name) patch.name = String(b.name).slice(0, 30);
     if (b.age) patch.age = Math.max(18, Math.min(80, parseInt(b.age) || 25));
-    if (b.city) patch.city = String(b.city).slice(0, 30);
+    if (b.city !== undefined) patch.city = b.city ? String(b.city).slice(0, 40) : null;
+    if (b.region !== undefined) patch.region = b.region ? String(b.region).slice(0, 30) : null;
     if (b.gender && ['H', 'F', 'A'].includes(b.gender)) patch.gender = b.gender;
     if (b.seeking && ['H', 'F', 'all'].includes(b.seeking)) patch.seeking = b.seeking;
     if (b.bio !== undefined) patch.bio = String(b.bio).slice(0, 200);

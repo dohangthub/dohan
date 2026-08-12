@@ -20,6 +20,7 @@ export type User = {
   name: string;
   age: number;
   city: string;
+  region?: string | null;
   gender: string;
   seeking?: 'H' | 'F' | 'all' | null;
   bio: string;

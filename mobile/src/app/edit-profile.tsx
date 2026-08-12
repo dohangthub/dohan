@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '../components/ui';
 import { AppState, api } from '../lib/api';
-import { COMMUNES } from '../lib/communes';
+import { COMMUNES_BY_REGION, REGIONS, regionOf } from '../lib/communes';
 import { pickImageDataUrl } from '../lib/pickImage';
 import { shadow, theme } from '../lib/theme';
 
@@ -18,6 +18,7 @@ export default function EditProfile() {
   const [gender, setGender] = useState('');
   const [seeking, setSeeking] = useState<'F' | 'H' | 'all' | ''>('');
   const [age, setAge] = useState('');
+  const [region, setRegion] = useState('');
   const [city, setCity] = useState('');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -32,6 +33,7 @@ export default function EditProfile() {
       setSeeking((s.me.seeking as any) || '');
       setAge(s.me.age ? String(s.me.age) : '');
       setCity(s.me.city || '');
+      setRegion(s.me.region || regionOf(s.me.city) || '');
     }).catch(() => {});
   }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -52,7 +54,8 @@ export default function EditProfile() {
     try {
       await api.saveProfile({
         name: name || 'Moi', bio: bio || 'Nouveau sur SenLove 👋', phone,
-        gender: gender || undefined, seeking: seeking || undefined, age: age || undefined, city: city || undefined,
+        gender: gender || undefined, seeking: seeking || undefined, age: age || undefined,
+        region: region || undefined, city: city || '',
       } as any);
     } catch {}
     setSaving(false);
@@ -77,6 +80,7 @@ export default function EditProfile() {
             <View style={styles.camBadge}>{uploading ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="camera" size={15} color="#fff" />}</View>
           </Pressable>
           <Pressable style={styles.photoBtn} onPress={changePhoto}><Text style={styles.photoBtnTxt}>Changer la photo</Text></Pressable>
+          <Text style={styles.photoHype}>😍 Plus ta photo est belle, plus tu as de chances de matcher. Mets une vraie photo de toi bien nette.</Text>
         </View>
 
         <Text style={styles.label}>Prénom</Text>
@@ -109,14 +113,27 @@ export default function EditProfile() {
         </View>
         <Text style={styles.helper}>Par défaut, on déduit ça de ton genre. Change-le si besoin.</Text>
 
-        <Text style={styles.label}>Commune / quartier</Text>
+        <Text style={styles.label}>Région</Text>
         <View style={styles.cities}>
-          {COMMUNES.map((c) => (
-            <Pressable key={c} style={[styles.cityChip, city === c && styles.cityOn]} onPress={() => setCity(c)}>
-              <Text style={[styles.cityTxt, city === c && { color: '#fff' }]}>{c}</Text>
+          {REGIONS.map((r) => (
+            <Pressable key={r} style={[styles.cityChip, region === r && styles.cityOn]} onPress={() => { setRegion(r); setCity(''); }}>
+              <Text style={[styles.cityTxt, region === r && { color: '#fff' }]}>{r}</Text>
             </Pressable>
           ))}
         </View>
+
+        {region ? (
+          <>
+            <Text style={styles.label}>Quartier / commune <Text style={{ color: theme.muted, fontWeight: '600' }}>· optionnel</Text></Text>
+            <View style={styles.cities}>
+              {(COMMUNES_BY_REGION[region] || []).map((c) => (
+                <Pressable key={c} style={[styles.cityChipSm, city === c && styles.cityOn]} onPress={() => setCity(city === c ? '' : c)}>
+                  <Text style={[styles.cityTxtSm, city === c && { color: '#fff' }]}>{c}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </>
+        ) : null}
 
         <Text style={styles.label}>Téléphone</Text>
         <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="+221 ..." placeholderTextColor="#C3BCC7" keyboardType="phone-pad" />
@@ -152,10 +169,13 @@ const styles = StyleSheet.create({
   segOn: { backgroundColor: theme.primary, borderColor: theme.primary },
   segTxt: { color: theme.ink, fontWeight: '700' },
   helper: { color: theme.muted, fontSize: 11.5, marginTop: 5, lineHeight: 16 },
+  photoHype: { color: theme.primary, fontSize: 12.5, fontWeight: '700', textAlign: 'center', lineHeight: 18, paddingHorizontal: 8, marginTop: 2 },
   cities: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   cityChip: { borderWidth: 1.5, borderColor: theme.line, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9, backgroundColor: '#fff' },
+  cityChipSm: { borderWidth: 1.5, borderColor: theme.line, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: '#fff' },
   cityOn: { backgroundColor: theme.primary, borderColor: theme.primary },
   cityTxt: { color: theme.ink, fontWeight: '700', fontSize: 13 },
+  cityTxtSm: { color: theme.ink, fontWeight: '600', fontSize: 12.5 },
   saveBtn: { backgroundColor: theme.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 22, ...shadow },
   saveBtnTxt: { color: '#fff', fontWeight: '800', fontSize: 15 },
 });

@@ -27,7 +27,7 @@ export default function Account() {
   const me = state.me;
   const hasBio = !!me.bio && me.bio !== 'Nouveau sur SenLove 👋';
   const genderLabel = me.gender ? GENDER[me.gender] : null;
-  const items = [!!me.photo, hasBio, !!me.phone, !!me.city, !!me.age];
+  const items = [!!me.photo, hasBio, !!me.phone, !!(me.city || me.region), !!me.age];
   const pct = Math.round((items.filter(Boolean).length / items.length) * 100);
 
   return (
@@ -58,7 +58,7 @@ export default function Account() {
             {me.verified ? <Ionicons name="checkmark-circle" size={22} color="#fff" /> : null}
           </View>
           <View style={styles.pills}>
-            {me.city ? <Pill icon="location" label={me.city} /> : null}
+            {(me.city || me.region) ? <Pill icon="location" label={me.city ? `${me.city}${me.region && me.region !== me.city ? ' · ' + me.region : ''}` : me.region!} /> : null}
             {genderLabel ? <Pill icon="person" label={genderLabel} /> : null}
             <Pill icon={state.premium ? 'diamond' : 'star'} label={state.premium ? 'Premium' : 'Gratuit'} />
           </View>

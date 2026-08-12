@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { api } from '../lib/api';
-import { COMMUNES } from '../lib/communes';
+import { COMMUNES_BY_REGION, REGIONS } from '../lib/communes';
 
 const V = { bg: '#FFFFFF', violet: '#7C3AED', violetLight: '#9B6DFF', ink: '#1C1630', muted: '#6E6690', line: '#EBE5F7', field: '#F6F2FF' };
 const GRAD = ['#9B6DFF', '#6D28D9'] as [string, string];
@@ -19,6 +19,7 @@ export default function Signup() {
   const [name, setName] = useState('');
   const [gender, setGender] = useState<'H' | 'F' | 'A' | ''>('');
   const [age, setAge] = useState('');
+  const [region, setRegion] = useState('');
   const [city, setCity] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -29,7 +30,7 @@ export default function Signup() {
     if (busy) return;
     setBusy(true);
     try {
-      await api.saveProfile({ name: name || 'Moi', gender: gender || undefined, age: age || undefined, city: city || undefined } as any);
+      await api.saveProfile({ name: name || 'Moi', gender: gender || undefined, age: age || undefined, region: region || undefined, city: city || undefined } as any);
     } catch {}
     setBusy(false);
     router.replace('/');
@@ -91,15 +92,30 @@ export default function Signup() {
         )}
 
         {step === 5 && (
-          <Step title="Tu es où ?" sub="Ta commune / quartier — pour rencontrer des gens tout près.">
+          <Step title="Tu es où ?" sub="Choisis ta région — pour rencontrer des gens près de toi.">
+            <Text style={styles.miniLabel}>Région</Text>
             <View style={styles.cities}>
-              {COMMUNES.map((c) => (
-                <Pressable key={c} style={[styles.cityChip, city === c && styles.cityChipOn]} onPress={() => setCity(c)}>
-                  <Text style={[styles.cityTxt, city === c && { color: '#fff' }]}>{c}</Text>
+              {REGIONS.map((r) => (
+                <Pressable key={r} style={[styles.cityChip, region === r && styles.cityChipOn]} onPress={() => { setRegion(r); setCity(''); }}>
+                  <Text style={[styles.cityTxt, region === r && { color: '#fff' }]}>{r}</Text>
                 </Pressable>
               ))}
             </View>
-            <Primary label={busy ? 'Création…' : 'Terminer 🎉'} onPress={finish} />
+
+            {region ? (
+              <>
+                <Text style={styles.miniLabel}>Quartier / commune <Text style={{ color: V.muted, fontWeight: '600' }}>· optionnel</Text></Text>
+                <View style={styles.cities}>
+                  {(COMMUNES_BY_REGION[region] || []).map((c) => (
+                    <Pressable key={c} style={[styles.cityChipSm, city === c && styles.cityChipOn]} onPress={() => setCity(city === c ? '' : c)}>
+                      <Text style={[styles.cityTxtSm, city === c && { color: '#fff' }]}>{c}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </>
+            ) : null}
+
+            <Primary label={busy ? 'Création…' : 'Terminer 🎉'} onPress={finish} disabled={!region} />
           </Step>
         )}
       </View>
@@ -160,8 +176,11 @@ const styles = StyleSheet.create({
   choiceOn: { borderColor: V.violet, backgroundColor: V.field },
   choiceTxt: { flex: 1, color: V.ink, fontWeight: '800', fontSize: 16 },
 
-  cities: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
-  cityChip: { borderWidth: 1.5, borderColor: V.line, borderRadius: 999, paddingHorizontal: 18, paddingVertical: 12 },
+  cities: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6, marginBottom: 4 },
+  cityChip: { borderWidth: 1.5, borderColor: V.line, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 11 },
+  cityChipSm: { borderWidth: 1.5, borderColor: V.line, borderRadius: 999, paddingHorizontal: 13, paddingVertical: 8 },
   cityChipOn: { backgroundColor: V.violet, borderColor: V.violet },
   cityTxt: { color: V.ink, fontWeight: '700' },
+  cityTxtSm: { color: V.ink, fontWeight: '600', fontSize: 13 },
+  miniLabel: { color: V.muted, fontWeight: '800', fontSize: 12, marginTop: 14 },
 });

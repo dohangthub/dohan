@@ -65,6 +65,17 @@ export default function Home() {
         </View>
       </View>
 
+      {!state.me.photo ? (
+        <Pressable style={styles.nudge} onPress={() => router.push('/edit-profile')}>
+          <View style={styles.nudgeIcon}><Ionicons name="camera" size={18} color="#fff" /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.nudgeTitle}>Ajoute ta photo pour apparaître</Text>
+            <Text style={styles.nudgeSub}>Sans photo, tu n'es pas visible dans l'accueil des autres.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.primary} />
+        </Pressable>
+      ) : null}
+
       <View style={styles.deckWrap}>
         <SwipeDeck users={state.deck} onSwipe={onSwipe} onEmpty={load} />
       </View>
@@ -107,6 +118,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  nudge: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 14, marginBottom: 4, backgroundColor: theme.tint, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 14, borderWidth: 1, borderColor: theme.line },
+  nudgeIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center' },
+  nudgeTitle: { fontWeight: '800', color: theme.ink, fontSize: 14 },
+  nudgeSub: { color: theme.muted, fontSize: 12, marginTop: 1, lineHeight: 16 },
   logo: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   brand: { fontSize: 22, fontWeight: '800', color: theme.ink },
   headerBtns: { flexDirection: 'row', gap: 10 },
