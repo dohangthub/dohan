@@ -6,7 +6,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ProfileSkeleton } from '../../components/Skeleton';
-import { AppState, Post, api } from '../../lib/api';
+import { AppState, Post, api, premiumLeft } from '../../lib/api';
 import { shadow, shadowSoft, theme } from '../../lib/theme';
 
 const GENDER: Record<string, string> = { H: 'Homme', F: 'Femme', A: 'Autre' };
@@ -84,7 +84,12 @@ export default function Account() {
             <View style={styles.premTop}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardH}>👑 Premium actif</Text>
-                <Text style={styles.premSub}>Likes illimités · tu vois qui t'a liké · profil mis en avant</Text>
+                {(() => {
+                  const left = premiumLeft(state.premiumUntil);
+                  return left
+                    ? <Text style={styles.premSub}>Il te reste {left.label} · jusqu'au {left.expiry}</Text>
+                    : <Text style={styles.premSub}>Likes illimités · tu vois qui t'a liké · profil mis en avant</Text>;
+                })()}
               </View>
               <Pressable style={styles.premBtn} onPress={() => router.push('/store')}><Text style={styles.premBtnTxt}>Gérer</Text></Pressable>
             </View>

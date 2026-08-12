@@ -193,6 +193,21 @@ export function avatarUri(u: User, w = 600, h = 800): string | null {
   return (u && u.photo) || photoUrl(u, w, h);
 }
 
+// Temps restant de Premium à partir de la date d'expiration (ISO).
+export function premiumLeft(untilISO?: string | null): { label: string; expiry: string } | null {
+  if (!untilISO) return null;
+  const ms = new Date(untilISO).getTime() - Date.now();
+  if (isNaN(ms) || ms <= 0) return null;
+  const days = Math.floor(ms / 86400000);
+  const hours = Math.floor((ms % 86400000) / 3600000);
+  let label: string;
+  if (days >= 1) label = `${days} jour${days > 1 ? 's' : ''}${hours > 0 ? ` ${hours} h` : ''}`;
+  else if (hours >= 1) label = `${hours} heure${hours > 1 ? 's' : ''}`;
+  else label = `${Math.max(1, Math.floor(ms / 60000))} min`;
+  const expiry = new Date(untilISO).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+  return { label, expiry };
+}
+
 // Helpers d'affichage (données non fournies par l'API démo)
 export function kmAway(id: string) {
   const n = parseInt(id.replace(/\D/g, ''), 10) || 1;

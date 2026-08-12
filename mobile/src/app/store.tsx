@@ -6,7 +6,7 @@ import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, Vi
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { OrangeMoneyLogo, WaveLogo } from '../components/PayLogos';
-import { AppState, api } from '../lib/api';
+import { AppState, api, premiumLeft } from '../lib/api';
 import { shadow, shadowSoft, theme } from '../lib/theme';
 
 const BENEFITS = [
@@ -65,8 +65,16 @@ export default function Store() {
 
         {prem ? (
           <View style={styles.activeCard}>
-            <Ionicons name="checkmark-circle" size={20} color={theme.success} />
-            <Text style={styles.activeTxt}>Ton Premium est actif. Profites-en 💜</Text>
+            <Ionicons name="checkmark-circle" size={22} color={theme.success} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.activeTxt}>Premium actif 💜</Text>
+              {(() => {
+                const left = premiumLeft(state?.premiumUntil);
+                return left
+                  ? <Text style={styles.activeSub}>Il te reste {left.label} · jusqu'au {left.expiry}</Text>
+                  : <Text style={styles.activeSub}>Profites-en à fond !</Text>;
+              })()}
+            </View>
           </View>
         ) : null}
 
@@ -163,8 +171,9 @@ const styles = StyleSheet.create({
   heroTitle: { color: '#fff', fontSize: 24, fontWeight: '900' },
   heroSub: { color: 'rgba(255,255,255,0.95)', fontSize: 14, textAlign: 'center', fontWeight: '600' },
 
-  activeCard: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: 14, padding: 14, ...shadowSoft },
-  activeTxt: { color: theme.ink, fontWeight: '700', flex: 1 },
+  activeCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 14, padding: 14, ...shadowSoft },
+  activeTxt: { color: theme.ink, fontWeight: '800', fontSize: 15 },
+  activeSub: { color: theme.muted, fontWeight: '600', fontSize: 12.5, marginTop: 1 },
 
   section: { fontSize: 13, fontWeight: '800', color: theme.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 10 },
   card: { backgroundColor: '#fff', borderRadius: 18, paddingHorizontal: 16, ...shadowSoft },
