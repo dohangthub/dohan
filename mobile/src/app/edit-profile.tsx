@@ -63,6 +63,20 @@ export default function EditProfile() {
 
   if (!state) return <SafeAreaView style={styles.safe} edges={['top']} />;
 
+  const hasPhoto = !!state.me.photo;
+  const fields = [
+    { key: 'photo', ok: hasPhoto },
+    { key: 'prénom', ok: !!name.trim() },
+    { key: 'genre', ok: !!gender },
+    { key: 'âge', ok: !!age },
+    { key: 'localisation', ok: !!(region || city) },
+    { key: 'bio', ok: !!bio.trim() },
+  ];
+  const missing = fields.filter((f) => !f.ok).map((f) => f.key);
+  const done = fields.length - missing.length;
+  const complete = missing.length === 0;
+  const pct = Math.round((done / fields.length) * 100);
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
@@ -72,22 +86,49 @@ export default function EditProfile() {
       </View>
 
       <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
+        {/* Bandeau de complétion */}
+        {complete ? (
+          <View style={styles.doneCard}>
+            <Ionicons name="checkmark-circle" size={24} color={theme.success} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.doneTitle}>Profil complet 🎉</Text>
+              <Text style={styles.doneSub}>Premium est débloqué et ton profil est mis en avant (boost actif).</Text>
+            </View>
+            <Pressable style={styles.doneBtn} onPress={() => router.push('/store')}><Text style={styles.doneBtnTxt}>Premium</Text></Pressable>
+          </View>
+        ) : (
+          <View style={styles.todoCard}>
+            <View style={styles.todoTop}>
+              <Text style={styles.todoTitle}>Complète ton profil</Text>
+              <Text style={styles.todoCount}>{done}/{fields.length}</Text>
+            </View>
+            <View style={styles.track}><View style={[styles.fill, { width: `${pct}%` }]} /></View>
+            <Text style={styles.todoSub}>À remplir pour débloquer Premium & le boost 🚀 :</Text>
+            <View style={styles.todoChips}>
+              {missing.map((m) => (
+                <View key={m} style={styles.todoChip}><Ionicons name="alert-circle" size={13} color={theme.gold} /><Text style={styles.todoChipTxt}>{m}</Text></View>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Photo */}
         <View style={styles.photoRow}>
           <Pressable onPress={changePhoto} style={styles.avatarWrap}>
             <Avatar user={state.me as any} size={92} />
             <View style={styles.camBadge}>{uploading ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="camera" size={15} color="#fff" />}</View>
           </Pressable>
-          <Pressable style={styles.photoBtn} onPress={changePhoto}><Text style={styles.photoBtnTxt}>Changer la photo</Text></Pressable>
+          <Pressable style={styles.photoBtn} onPress={changePhoto}><Text style={styles.photoBtnTxt}>{hasPhoto ? 'Changer la photo' : 'Ajouter ta photo'}</Text></Pressable>
+          {!hasPhoto ? <View style={styles.photoTodo}><Ionicons name="alert-circle" size={13} color={theme.gold} /><Text style={styles.photoTodoTxt}>Photo à ajouter</Text></View> : null}
           <Text style={styles.photoHype}>😍 Plus ta photo est belle, plus tu as de chances de matcher. Mets une vraie photo de toi bien nette.</Text>
         </View>
 
-        <Text style={styles.label}>Prénom</Text>
+        <ReqLabel text="Prénom" ok={!!name.trim()} />
         <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Ton prénom" placeholderTextColor="#C3BCC7" />
 
         <View style={styles.rowFields}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Genre</Text>
+            <ReqLabel text="Genre" ok={!!gender} />
             <View style={styles.seg}>
               {[['F', 'Femme'], ['H', 'Homme']].map(([g, l]) => (
                 <Pressable key={g} style={[styles.segBtn, gender === g && styles.segOn]} onPress={() => setGender(g)}>
@@ -97,12 +138,12 @@ export default function EditProfile() {
             </View>
           </View>
           <View style={{ width: 84 }}>
-            <Text style={styles.label}>Âge</Text>
+            <ReqLabel text="Âge" ok={!!age} />
             <TextInput style={[styles.input, { textAlign: 'center' }]} value={age} onChangeText={(t) => setAge(t.replace(/\D/g, '').slice(0, 2))} placeholder="24" placeholderTextColor="#C3BCC7" keyboardType="number-pad" />
           </View>
         </View>
 
-        <Select label="Région" icon="location-outline" value={region} placeholder="Choisis ta région" options={REGIONS} onChange={(r) => { setRegion(r); setCity(''); }} />
+        <Select label={region ? 'Région' : 'Région · à compléter'} icon="location-outline" value={region} placeholder="Choisis ta région" options={REGIONS} onChange={(r) => { setRegion(r); setCity(''); }} />
 
         <Select
           label="Quartier / commune (optionnel)"
@@ -117,7 +158,7 @@ export default function EditProfile() {
         <Text style={styles.label}>Téléphone</Text>
         <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="+221 ..." placeholderTextColor="#C3BCC7" keyboardType="phone-pad" />
 
-        <Text style={styles.label}>Bio</Text>
+        <ReqLabel text="Bio" ok={!!bio.trim()} />
         <TextInput style={[styles.input, styles.textarea]} value={bio} onChangeText={setBio} placeholder="Parle un peu de toi..." placeholderTextColor="#C3BCC7" multiline maxLength={200} />
 
         <Pressable style={styles.saveBtn} onPress={save}><Text style={styles.saveBtnTxt}>{saving ? 'Enregistrement…' : 'Enregistrer'}</Text></Pressable>
@@ -127,8 +168,38 @@ export default function EditProfile() {
   );
 }
 
+function ReqLabel({ text, ok }: { text: string; ok: boolean }) {
+  return (
+    <View style={styles.labelRow}>
+      <Text style={styles.label}>{text}</Text>
+      {ok
+        ? <Ionicons name="checkmark-circle" size={13} color={theme.success} />
+        : <Text style={styles.todoMark}>à compléter</Text>}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.bg },
+  doneCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#EAF9F1', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#BEEBD4', marginBottom: 6 },
+  doneTitle: { fontWeight: '900', color: theme.ink, fontSize: 15 },
+  doneSub: { color: theme.muted, fontSize: 12.5, marginTop: 1, lineHeight: 17 },
+  doneBtn: { backgroundColor: theme.success, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999 },
+  doneBtnTxt: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  todoCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, gap: 8, borderWidth: 1, borderColor: theme.tint, marginBottom: 6 },
+  todoTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  todoTitle: { fontWeight: '900', color: theme.ink, fontSize: 16 },
+  todoCount: { fontWeight: '900', color: theme.primary, fontSize: 15 },
+  track: { height: 8, borderRadius: 999, backgroundColor: theme.tint, overflow: 'hidden' },
+  fill: { height: 8, borderRadius: 999, backgroundColor: theme.primary },
+  todoSub: { color: theme.muted, fontSize: 12.5, fontWeight: '600' },
+  todoChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  todoChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFF3E9', borderRadius: 999, paddingHorizontal: 11, paddingVertical: 6 },
+  todoChipTxt: { color: '#C25A18', fontWeight: '800', fontSize: 12.5 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  todoMark: { color: theme.gold, fontWeight: '800', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: 0.3 },
+  photoTodo: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  photoTodoTxt: { color: theme.gold, fontWeight: '800', fontSize: 12 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.line, backgroundColor: '#fff' },
   back: { padding: 4 },
   title: { fontWeight: '800', color: theme.ink, fontSize: 17 },
