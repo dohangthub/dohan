@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Select } from '../components/Select';
 import { Avatar } from '../components/ui';
 import { AppState, api } from '../lib/api';
 import { COMMUNES_BY_REGION, REGIONS, regionOf } from '../lib/communes';
@@ -16,7 +17,6 @@ export default function EditProfile() {
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
   const [gender, setGender] = useState('');
-  const [seeking, setSeeking] = useState<'F' | 'H' | 'all' | ''>('');
   const [age, setAge] = useState('');
   const [region, setRegion] = useState('');
   const [city, setCity] = useState('');
@@ -30,7 +30,6 @@ export default function EditProfile() {
       setPhone(s.me.phone || '');
       setBio(s.me.bio === 'Nouveau sur SenLove 👋' ? '' : s.me.bio);
       setGender((s.me as any).gender || '');
-      setSeeking((s.me.seeking as any) || '');
       setAge(s.me.age ? String(s.me.age) : '');
       setCity(s.me.city || '');
       setRegion(s.me.region || regionOf(s.me.city) || '');
@@ -54,7 +53,7 @@ export default function EditProfile() {
     try {
       await api.saveProfile({
         name: name || 'Moi', bio: bio || 'Nouveau sur SenLove 👋', phone,
-        gender: gender || undefined, seeking: seeking || undefined, age: age || undefined,
+        gender: gender || undefined, age: age || undefined,
         region: region || undefined, city: city || '',
       } as any);
     } catch {}
@@ -103,37 +102,17 @@ export default function EditProfile() {
           </View>
         </View>
 
-        <Text style={styles.label}>Je cherche</Text>
-        <View style={styles.seg}>
-          {[['F', 'Femmes'], ['H', 'Hommes'], ['all', 'Tout le monde']].map(([g, l]) => (
-            <Pressable key={g} style={[styles.segBtn, seeking === g && styles.segOn]} onPress={() => setSeeking(g as any)}>
-              <Text style={[styles.segTxt, seeking === g && { color: '#fff' }, { fontSize: 13 }]}>{l}</Text>
-            </Pressable>
-          ))}
-        </View>
-        <Text style={styles.helper}>Par défaut, on déduit ça de ton genre. Change-le si besoin.</Text>
+        <Select label="Région" icon="location-outline" value={region} placeholder="Choisis ta région" options={REGIONS} onChange={(r) => { setRegion(r); setCity(''); }} />
 
-        <Text style={styles.label}>Région</Text>
-        <View style={styles.cities}>
-          {REGIONS.map((r) => (
-            <Pressable key={r} style={[styles.cityChip, region === r && styles.cityOn]} onPress={() => { setRegion(r); setCity(''); }}>
-              <Text style={[styles.cityTxt, region === r && { color: '#fff' }]}>{r}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {region ? (
-          <>
-            <Text style={styles.label}>Quartier / commune <Text style={{ color: theme.muted, fontWeight: '600' }}>· optionnel</Text></Text>
-            <View style={styles.cities}>
-              {(COMMUNES_BY_REGION[region] || []).map((c) => (
-                <Pressable key={c} style={[styles.cityChipSm, city === c && styles.cityOn]} onPress={() => setCity(city === c ? '' : c)}>
-                  <Text style={[styles.cityTxtSm, city === c && { color: '#fff' }]}>{c}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </>
-        ) : null}
+        <Select
+          label="Quartier / commune (optionnel)"
+          icon="navigate-outline"
+          value={city}
+          placeholder={region ? 'Précise ton quartier' : "Choisis d'abord ta région"}
+          options={region ? (COMMUNES_BY_REGION[region] || []) : []}
+          onChange={setCity}
+          disabled={!region}
+        />
 
         <Text style={styles.label}>Téléphone</Text>
         <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="+221 ..." placeholderTextColor="#C3BCC7" keyboardType="phone-pad" />

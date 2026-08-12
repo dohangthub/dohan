@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { Select } from '../components/Select';
 import { api } from '../lib/api';
 import { COMMUNES_BY_REGION, REGIONS } from '../lib/communes';
 
@@ -93,28 +94,16 @@ export default function Signup() {
 
         {step === 5 && (
           <Step title="Tu es où ?" sub="Choisis ta région — pour rencontrer des gens près de toi.">
-            <Text style={styles.miniLabel}>Région</Text>
-            <View style={styles.cities}>
-              {REGIONS.map((r) => (
-                <Pressable key={r} style={[styles.cityChip, region === r && styles.cityChipOn]} onPress={() => { setRegion(r); setCity(''); }}>
-                  <Text style={[styles.cityTxt, region === r && { color: '#fff' }]}>{r}</Text>
-                </Pressable>
-              ))}
-            </View>
-
-            {region ? (
-              <>
-                <Text style={styles.miniLabel}>Quartier / commune <Text style={{ color: V.muted, fontWeight: '600' }}>· optionnel</Text></Text>
-                <View style={styles.cities}>
-                  {(COMMUNES_BY_REGION[region] || []).map((c) => (
-                    <Pressable key={c} style={[styles.cityChipSm, city === c && styles.cityChipOn]} onPress={() => setCity(city === c ? '' : c)}>
-                      <Text style={[styles.cityTxtSm, city === c && { color: '#fff' }]}>{c}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </>
-            ) : null}
-
+            <Select label="Région" icon="location-outline" value={region} placeholder="Choisis ta région" options={REGIONS} onChange={(r) => { setRegion(r); setCity(''); }} />
+            <Select
+              label="Quartier / commune (optionnel)"
+              icon="navigate-outline"
+              value={city}
+              placeholder={region ? 'Précise ton quartier' : "Choisis d'abord ta région"}
+              options={region ? (COMMUNES_BY_REGION[region] || []) : []}
+              onChange={setCity}
+              disabled={!region}
+            />
             <Primary label={busy ? 'Création…' : 'Terminer 🎉'} onPress={finish} disabled={!region} />
           </Step>
         )}
