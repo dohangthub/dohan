@@ -16,6 +16,7 @@ export default function EditProfile() {
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
   const [gender, setGender] = useState('');
+  const [seeking, setSeeking] = useState<'F' | 'H' | 'all' | ''>('');
   const [age, setAge] = useState('');
   const [city, setCity] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -28,6 +29,7 @@ export default function EditProfile() {
       setPhone(s.me.phone || '');
       setBio(s.me.bio === 'Nouveau sur SenLove 👋' ? '' : s.me.bio);
       setGender((s.me as any).gender || '');
+      setSeeking((s.me.seeking as any) || '');
       setAge(s.me.age ? String(s.me.age) : '');
       setCity(s.me.city || '');
     }).catch(() => {});
@@ -50,7 +52,7 @@ export default function EditProfile() {
     try {
       await api.saveProfile({
         name: name || 'Moi', bio: bio || 'Nouveau sur SenLove 👋', phone,
-        gender: gender || undefined, age: age || undefined, city: city || undefined,
+        gender: gender || undefined, seeking: seeking || undefined, age: age || undefined, city: city || undefined,
       } as any);
     } catch {}
     setSaving(false);
@@ -97,6 +99,16 @@ export default function EditProfile() {
           </View>
         </View>
 
+        <Text style={styles.label}>Je cherche</Text>
+        <View style={styles.seg}>
+          {[['F', 'Femmes'], ['H', 'Hommes'], ['all', 'Tout le monde']].map(([g, l]) => (
+            <Pressable key={g} style={[styles.segBtn, seeking === g && styles.segOn]} onPress={() => setSeeking(g as any)}>
+              <Text style={[styles.segTxt, seeking === g && { color: '#fff' }, { fontSize: 13 }]}>{l}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <Text style={styles.helper}>Par défaut, on déduit ça de ton genre. Change-le si besoin.</Text>
+
         <Text style={styles.label}>Commune / quartier</Text>
         <View style={styles.cities}>
           {COMMUNES.map((c) => (
@@ -139,6 +151,7 @@ const styles = StyleSheet.create({
   segBtn: { flex: 1, borderWidth: 1.5, borderColor: theme.line, borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: '#fff' },
   segOn: { backgroundColor: theme.primary, borderColor: theme.primary },
   segTxt: { color: theme.ink, fontWeight: '700' },
+  helper: { color: theme.muted, fontSize: 11.5, marginTop: 5, lineHeight: 16 },
   cities: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   cityChip: { borderWidth: 1.5, borderColor: theme.line, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9, backgroundColor: '#fff' },
   cityOn: { backgroundColor: theme.primary, borderColor: theme.primary },

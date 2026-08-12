@@ -199,6 +199,7 @@ function readRaw(req) {
 function pubUser(u) {
   return {
     id: u.id, name: u.name, age: u.age, city: u.city, gender: u.gender,
+    seeking: u.seeking || null,
     bio: u.bio, interests: u.interests || [], grad: u.grad, emoji: u.emoji, online: u.online,
     photo: u.photo || null,
     verified: u.id === ME ? meState.verified : VERIFIED.has(u.id),
@@ -209,6 +210,23 @@ function pubUser(u) {
 // ---------- Algo de matching : score d'un candidat pour "moi" ----------
 const DAKAR = new Set(['Dakar-Plateau', 'Médina', 'Grand Yoff', 'Parcelles Assainies', 'Yoff', 'Almadies', 'Ngor', 'Ouakam', 'Point E / Mermoz', 'Grand Dakar', 'Liberté / HLM', 'Pikine', 'Guédiawaye', 'Rufisque', 'Keur Massar', 'Dakar']);
 const regionOf = (c) => (DAKAR.has(c) ? 'Dakar' : c);
+
+// Qui l'utilisateur veut voir. Déduit du genre par défaut (hétéro), surchargeable via u.seeking.
+function seekingOf(u) {
+  if (u && (u.seeking === 'F' || u.seeking === 'H' || u.seeking === 'all')) return u.seeking;
+  if (u && u.gender === 'H') return 'F';
+  if (u && u.gender === 'F') return 'H';
+  return 'all'; // 'A' / inconnu : ne filtre pas
+}
+// Compatibilité de genre MUTUELLE : je le vois si son genre me correspond ET que je corresponds à sa recherche.
+function genderMatch(me, u) {
+  if (!me || !u) return true;
+  const mySeek = seekingOf(me);
+  if (mySeek !== 'all' && u.gender && u.gender !== mySeek) return false;
+  const theirSeek = seekingOf(u);
+  if (theirSeek !== 'all' && me.gender && me.gender !== theirSeek) return false;
+  return true;
+}
 function deckScore(u, me) {
   let s = 0;
   if (u.likes_me) s += 100;                              // réciprocité (matchs instantanés) — levier #1
@@ -235,11 +253,11 @@ async function getState() {
   const blocked = (me && me.blocked) || [];
 
   const deck = cands
-    .filter((u) => !swipeMap[u.id] && !blocked.includes(u.id))
+    .filter((u) => !swipeMap[u.id] && !blocked.includes(u.id) && genderMatch(me, u))
     .map((u) => ({ u, sc: deckScore(u, me) }))
     .sort((a, b) => b.sc - a.sc || (a.u.seq || 0) - (b.u.seq || 0))
     .map((x) => pubUser(x.u));
-  const likedYou = cands.filter((u) => u.likes_me && swipeMap[u.id] !== 'pass' && !blocked.includes(u.id));
+  const likedYou = cands.filter((u) => u.likes_me && swipeMap[u.id] !== 'pass' && !blocked.includes(u.id) && genderMatch(me, u));
 
   const matchesRaw = await sb('GET', `matches?user_a=eq.${ME}&order=id.asc&select=*`);
   let msgsByMatch = {};
@@ -324,6 +342,7 @@ async function api(req, res, url) {
     if (b.age) patch.age = Math.max(18, Math.min(80, parseInt(b.age) || 25));
     if (b.city) patch.city = String(b.city).slice(0, 30);
     if (b.gender && ['H', 'F', 'A'].includes(b.gender)) patch.gender = b.gender;
+    if (b.seeking && ['H', 'F', 'all'].includes(b.seeking)) patch.seeking = b.seeking;
     if (b.bio !== undefined) patch.bio = String(b.bio).slice(0, 200);
     if (b.emoji) patch.emoji = String(b.emoji).slice(0, 4);
     if (Array.isArray(b.interests)) patch.interests = b.interests.slice(0, 6);

@@ -21,6 +21,7 @@ export type User = {
   age: number;
   city: string;
   gender: string;
+  seeking?: 'H' | 'F' | 'all' | null;
   bio: string;
   interests: string[];
   grad: [string, string];
