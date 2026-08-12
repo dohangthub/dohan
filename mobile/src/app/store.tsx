@@ -10,7 +10,7 @@ import { AppState, api } from '../lib/api';
 import { shadow, shadowSoft, theme } from '../lib/theme';
 
 const BENEFITS = [
-  { icon: 'heart', title: 'Likes illimités', sub: 'Fini les 10 likes par jour' },
+  { icon: 'heart', title: 'Likes illimités', sub: 'Fini les 5 likes par jour' },
   { icon: 'eye', title: 'Vois qui t\'a liké', sub: 'Et matche direct, sans attendre' },
   { icon: 'rocket', title: 'Profil mis en avant', sub: 'Tu passes devant = beaucoup plus de vues' },
   { icon: 'shield-checkmark', title: 'Badge Premium', sub: 'Plus de confiance, plus de réponses' },
@@ -33,6 +33,8 @@ export default function Store() {
 
   const selected = PLANS.find((p) => p.item === plan)!;
   const prem = state?.premium;
+  const complete = state?.profileComplete ?? true;
+  const missing = state?.profileMissing || [];
 
   async function buy() {
     if (busy) return;
@@ -40,6 +42,7 @@ export default function Store() {
     const method = pay === 'Orange Money' ? 'om' : 'wave';
     const r = await api.payInit('pass', plan, method, (state && state.me.phone) || '');
     setBusy(false);
+    if ((r as any)?.error === 'profile_incomplete') { setMsg('Complète d\'abord ton profil pour passer Premium.'); return; }
     if (r?.simulated) { setMsg('✓ Premium activé (mode démo)'); setTimeout(() => router.back(), 1100); return; }
     if (r?.payment_url) { Linking.openURL(r.payment_url); router.back(); return; }
     setMsg('Une erreur est survenue, réessaie.');
@@ -82,7 +85,22 @@ export default function Store() {
           ))}
         </View>
 
-        {!prem ? (
+        {!prem && !complete ? (
+          <View style={styles.gate}>
+            <View style={styles.gateIcon}><Ionicons name="lock-closed" size={22} color={theme.primary} /></View>
+            <Text style={styles.gateTitle}>Complète ton profil d'abord</Text>
+            <Text style={styles.gateSub}>Premium est réservé aux profils complets — c'est plus juste, et ça te garantit de vrais résultats. Il te manque :</Text>
+            <View style={styles.gateChips}>
+              {missing.map((m) => <View key={m} style={styles.gateChip}><Text style={styles.gateChipTxt}>{m}</Text></View>)}
+            </View>
+            <Pressable style={styles.cta} onPress={() => router.push('/edit-profile')}>
+              <Ionicons name="create-outline" size={18} color="#fff" />
+              <Text style={styles.ctaTxt}>Compléter mon profil</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {!prem && complete ? (
           <>
             {/* FORMULE */}
             <Text style={styles.section}>Choisis ta formule</Text>
@@ -173,8 +191,16 @@ const styles = StyleSheet.create({
   paySel: { borderColor: theme.primary, backgroundColor: theme.tint },
   payTxt: { fontWeight: '800', color: theme.ink, fontSize: 14 },
 
-  cta: { backgroundColor: theme.primary, borderRadius: 16, paddingVertical: 17, alignItems: 'center', marginTop: 14, ...shadow },
+  cta: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: theme.primary, borderRadius: 16, paddingVertical: 17, marginTop: 14, ...shadow },
   ctaTxt: { color: '#fff', fontWeight: '900', fontSize: 16 },
+
+  gate: { backgroundColor: '#fff', borderRadius: 18, padding: 20, alignItems: 'center', gap: 8, marginTop: 8, borderWidth: 1, borderColor: theme.tint, ...shadowSoft },
+  gateIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: theme.tint, alignItems: 'center', justifyContent: 'center' },
+  gateTitle: { fontSize: 17, fontWeight: '900', color: theme.ink, textAlign: 'center' },
+  gateSub: { color: theme.muted, fontSize: 13.5, textAlign: 'center', lineHeight: 20 },
+  gateChips: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 2 },
+  gateChip: { backgroundColor: theme.tint, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  gateChipTxt: { color: theme.primaryDark, fontWeight: '700', fontSize: 13 },
   msg: { textAlign: 'center', color: theme.primary, fontWeight: '800', marginTop: 10 },
   note: { textAlign: 'center', color: theme.muted, fontSize: 11.5, marginTop: 12, lineHeight: 16 },
 });

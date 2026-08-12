@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SECRET_KEY;
 const ME = 'me';
-const FREE_DAILY_LIKES = 10;
+const FREE_DAILY_LIKES = 5;
 
 const DM_POLICY = { u2: 'requests', u5: 'requests', u8: 'verified' };
 const VERIFIED = new Set(['u1', 'u2', 'u4', 'u6', 'u8', 'u10']);
@@ -101,6 +101,25 @@ function mediaUnlocked(msgs) {
   return mine >= 1 && theirs >= 1 && msgs.length >= MEDIA_MIN_MSGS;
 }
 function hasPhoto(u) { return !!(u && (u.photo || PHOTOS[u.id])); }
+const DEFAULT_BIO = 'Nouveau sur SenLove 👋';
+function profileMissing(me) {
+  const miss = [];
+  if (!me) return ['photo', 'prénom', 'genre', 'âge', 'localisation', 'bio'];
+  if (!me.photo) miss.push('photo');
+  if (!me.name || me.name === 'Moi') miss.push('prénom');
+  if (!me.gender) miss.push('genre');
+  if (!me.age) miss.push('âge');
+  if (!me.region && !me.city) miss.push('localisation');
+  if (!me.bio || me.bio === DEFAULT_BIO) miss.push('bio');
+  return miss;
+}
+const profileComplete = (me) => profileMissing(me).length === 0;
+function isBoosted(u) {
+  const now = Date.now();
+  return !!(u && (u.premium
+    || (u.premium_until && new Date(u.premium_until).getTime() > now)
+    || (u.boost_until && new Date(u.boost_until).getTime() > now)));
+}
 function genderMatch(me, u) {
   if (!me || !u) return true;
   const mySeek = seekingOf(me);
@@ -112,6 +131,7 @@ function genderMatch(me, u) {
 function deckScore(u, me) {
   let s = 0;
   if (u.likes_me) s += 100;                              // réciprocité (matchs instantanés)
+  if (isBoosted(u)) s += 60;                             // BOOST réel : les Premium remontent dans le deck
   const myReg = (me && (me.region || regionOf(me.city))) || null;
   const uReg = u.region || regionOf(u.city);
   if (me && me.city && u.city && me.city === u.city) s += 40;   // même commune / quartier
@@ -163,6 +183,7 @@ async function getState() {
     boostActive: !!(me && me.boost_until && new Date(me.boost_until).getTime() > now),
     likesLeft: premium ? null : Math.max(0, FREE_DAILY_LIKES - (me ? me.likes_used : 0)),
     likedYouCount: likedYou.length, likedYou: premium ? likedYou.map(pubUser) : [], icebreakers: ICEBREAKERS,
+    profileComplete: profileComplete(me), profileMissing: profileMissing(me), freeDailyLikes: FREE_DAILY_LIKES,
   };
 }
 const PASS_DAYS = { day: 1, week: 7, month: 30 };
@@ -335,6 +356,11 @@ exports.handler = async (event) => {
       const kind = b.kind, item = b.item, payMethod = b.method === 'om' ? 'om' : 'wave';
       const amount = priceOf(kind, item);
       if (!amount) return J(400, { error: 'article inconnu' });
+      if (kind === 'pass') {
+        const [meNow] = await sb('GET', `profiles?id=eq.${ME}&select=*`);
+        const miss = profileMissing(meNow);
+        if (miss.length) return J(403, { error: 'profile_incomplete', missing: miss });
+      }
       if (!UNITECH_KEY) { await fulfill(kind, item); return J(200, { ok: true, simulated: true, state: await getState() }); }
       const data = await unitechCreate(payMethod, amount, b.phone || '', `SenLove ${kind} ${item}`);
       if (!data || !data.success || !data.data) return J(502, { error: 'paiement', detail: data });

@@ -27,7 +27,7 @@ const PUBLIC = fs.existsSync(path.join(WEB_DIST, 'index.html')) ? WEB_DIST : pat
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SECRET_KEY;
 const ME = 'me';
-const FREE_DAILY_LIKES = 10;
+const FREE_DAILY_LIKES = 5;
 
 // Contrôle des DM (différenciateur sécurité) — politiques par profil, sans colonne DB
 const DM_POLICY = { u2: 'requests', u5: 'requests', u8: 'verified' }; // les autres: 'everyone'
@@ -251,6 +251,29 @@ function mediaUnlocked(msgs) {
 // Une photo réelle est requise pour apparaître dans l'accueil (anti "photo de chien/matelas" niveau 1).
 // Les profils démo (u1..u12) mappent une photo Unsplash => considérés comme ayant une photo.
 function hasPhoto(u) { return !!(u && (u.photo || PHOTOS[u.id])); }
+
+// Profil complet : requis pour pouvoir passer Premium.
+const DEFAULT_BIO = 'Nouveau sur SenLove 👋';
+function profileMissing(me) {
+  const miss = [];
+  if (!me) return ['photo', 'prénom', 'genre', 'âge', 'localisation', 'bio'];
+  if (!me.photo) miss.push('photo');
+  if (!me.name || me.name === 'Moi') miss.push('prénom');
+  if (!me.gender) miss.push('genre');
+  if (!me.age) miss.push('âge');
+  if (!me.region && !me.city) miss.push('localisation');
+  if (!me.bio || me.bio === DEFAULT_BIO) miss.push('bio');
+  return miss;
+}
+const profileComplete = (me) => profileMissing(me).length === 0;
+
+// Un profil Premium (ou boosté) est mis en avant dans le deck des autres — boost RÉEL, dure ce qui est payé.
+function isBoosted(u) {
+  const now = Date.now();
+  return !!(u && (u.premium
+    || (u.premium_until && new Date(u.premium_until).getTime() > now)
+    || (u.boost_until && new Date(u.boost_until).getTime() > now)));
+}
 // Compatibilité de genre MUTUELLE : je le vois si son genre me correspond ET que je corresponds à sa recherche.
 function genderMatch(me, u) {
   if (!me || !u) return true;
@@ -263,6 +286,7 @@ function genderMatch(me, u) {
 function deckScore(u, me) {
   let s = 0;
   if (u.likes_me) s += 100;                              // réciprocité (matchs instantanés) — levier #1
+  if (isBoosted(u)) s += 60;                             // BOOST réel : les Premium remontent dans le deck
   const myReg = (me && (me.region || regionOf(me.city))) || null;
   const uReg = u.region || regionOf(u.city);
   if (me && me.city && u.city && me.city === u.city) s += 40;   // même commune / quartier
@@ -321,6 +345,9 @@ async function getState() {
     likedYouCount: likedYou.length,
     likedYou: premium ? likedYou.map(pubUser) : [],
     icebreakers: ICEBREAKERS,
+    profileComplete: profileComplete(me),
+    profileMissing: profileMissing(me),
+    freeDailyLikes: FREE_DAILY_LIKES,
   };
 }
 
@@ -535,6 +562,11 @@ async function api(req, res, url) {
     const kind = b.kind, item = b.item, method = b.method === 'om' ? 'om' : 'wave';
     const amount = priceOf(kind, item);
     if (!amount) return json(res, 400, { error: 'article inconnu' });
+    if (kind === 'pass') { // Premium réservé aux profils complets
+      const [meNow] = await sb('GET', `profiles?id=eq.${ME}&select=*`);
+      const miss = profileMissing(meNow);
+      if (miss.length) return json(res, 403, { error: 'profile_incomplete', missing: miss });
+    }
     if (!UNITECH_KEY) { // repli démo (pas de clé configurée)
       await fulfill(kind, item);
       return json(res, 200, { ok: true, simulated: true, state: await getState() });

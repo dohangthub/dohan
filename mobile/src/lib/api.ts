@@ -53,6 +53,9 @@ export type AppState = {
   likedYouCount: number;
   likedYou: User[];
   icebreakers: string[];
+  profileComplete: boolean;
+  profileMissing: string[];
+  freeDailyLikes: number;
 };
 
 export type ChatMsg = { from: 'me' | 'them'; text: string; kind?: 'text' | 'image' | 'audio'; media?: string | null };
