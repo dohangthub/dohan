@@ -243,13 +243,13 @@ function seekingOf(u) {
 const MEDIA_MIN_MSGS = 5; // vocaux & médias débloqués après 5 messages échangés (les deux ayant parlé)
 const FREE_DAILY_MSGS = 15; // messages/jour en gratuit ; illimité en Premium
 
-// Masque les numéros de téléphone (7+ chiffres) pour pousser au Premium (anti "on se donne le numéro et on quitte l'app").
+// Masque les numéros de téléphone pour pousser au Premium (anti "on se donne le numéro et on quitte l'app").
+// Robuste à l'obfuscation : masque toute séquence d'au moins 7 chiffres où chaque chiffre est séparé
+// du suivant par ≤3 caractères quelconques (espaces, * . - / lettres, etc.). Ex: "77*333*44*67", "7 7 3 3 3 4 4".
+const PHONE_RE = /\+?\d(?:[^\d\n]{0,3}\d){6,}/g;
 function maskPhones(text) {
   if (!text) return text;
-  return String(text).replace(/(\+?\d[\d\s.\-]{5,}\d)/g, (m) => {
-    const digits = (m.match(/\d/g) || []).length;
-    return digits >= 7 ? '📵 numéro masqué — passe Premium pour le voir' : m;
-  });
+  return String(text).replace(PHONE_RE, '📵 numéro masqué — passe Premium pour le voir');
 }
 const mapMsg = (x, mask) => ({
   from: x.sender === ME ? 'me' : 'them',
