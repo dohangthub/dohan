@@ -117,16 +117,14 @@ function mediaUnlocked(msgs) {
 const isPremium = (me) => !!(me && (me.premium || (me.premium_until && new Date(me.premium_until).getTime() > Date.now())));
 const todayStr = () => new Date().toISOString().slice(0, 10);
 function hasPhoto(u) { return !!(u && (u.photo || PHOTOS[u.id])); }
-const DEFAULT_BIO = 'Nouveau sur SenLove 👋';
 function profileMissing(me) {
   const miss = [];
-  if (!me) return ['photo', 'prénom', 'genre', 'âge', 'localisation', 'bio'];
+  if (!me) return ['photo', 'prénom', 'genre', 'âge', 'localisation'];
   if (!me.photo) miss.push('photo');
   if (!me.name || me.name === 'Moi') miss.push('prénom');
   if (!me.gender) miss.push('genre');
   if (!me.age) miss.push('âge');
   if (!me.region && !me.city) miss.push('localisation');
-  if (!me.bio || me.bio === DEFAULT_BIO) miss.push('bio');
   return miss;
 }
 const profileComplete = (me) => profileMissing(me).length === 0;

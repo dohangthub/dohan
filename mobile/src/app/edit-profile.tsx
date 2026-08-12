@@ -8,6 +8,7 @@ import { Select } from '../components/Select';
 import { Avatar } from '../components/ui';
 import { AppState, api } from '../lib/api';
 import { COMMUNES_BY_REGION, REGIONS, regionOf } from '../lib/communes';
+import { INTERESTS, MAX_INTERESTS } from '../lib/interests';
 import { pickImageDataUrl } from '../lib/pickImage';
 import { shadow, theme } from '../lib/theme';
 
@@ -15,7 +16,7 @@ export default function EditProfile() {
   const [state, setState] = useState<AppState | null>(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [bio, setBio] = useState('');
+  const [interests, setInterests] = useState<string[]>([]);
   const [gender, setGender] = useState('');
   const [age, setAge] = useState('');
   const [region, setRegion] = useState('');
@@ -28,7 +29,7 @@ export default function EditProfile() {
       setState(s);
       setName(s.me.name === 'Moi' ? '' : s.me.name);
       setPhone(s.me.phone || '');
-      setBio(s.me.bio === 'Nouveau sur SenLove 👋' ? '' : s.me.bio);
+      setInterests(Array.isArray(s.me.interests) ? s.me.interests : []);
       setGender((s.me as any).gender || '');
       setAge(s.me.age ? String(s.me.age) : '');
       setCity(s.me.city || '');
@@ -52,7 +53,7 @@ export default function EditProfile() {
     setSaving(true);
     try {
       await api.saveProfile({
-        name: name || 'Moi', bio: bio || 'Nouveau sur SenLove 👋', phone,
+        name: name || 'Moi', phone, interests,
         gender: gender || undefined, age: age || undefined,
         region: region || undefined, city: city || '',
       } as any);
@@ -70,8 +71,9 @@ export default function EditProfile() {
     { key: 'genre', ok: !!gender },
     { key: 'âge', ok: !!age },
     { key: 'localisation', ok: !!(region || city) },
-    { key: 'bio', ok: !!bio.trim() },
   ];
+  const toggleInterest = (t: string) =>
+    setInterests((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : cur.length < MAX_INTERESTS ? [...cur, t] : cur));
   const missing = fields.filter((f) => !f.ok).map((f) => f.key);
   const done = fields.length - missing.length;
   const complete = missing.length === 0;
@@ -158,8 +160,17 @@ export default function EditProfile() {
         <Text style={styles.label}>Téléphone</Text>
         <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="+221 ..." placeholderTextColor="#C3BCC7" keyboardType="phone-pad" />
 
-        <ReqLabel text="Bio" ok={!!bio.trim()} />
-        <TextInput style={[styles.input, styles.textarea]} value={bio} onChangeText={setBio} placeholder="Parle un peu de toi..." placeholderTextColor="#C3BCC7" multiline maxLength={200} />
+        <Text style={styles.label}>Centres d'intérêt <Text style={{ color: theme.muted, fontWeight: '600' }}>· facultatif ({interests.length}/{MAX_INTERESTS})</Text></Text>
+        <View style={styles.cities}>
+          {INTERESTS.map((t) => {
+            const on = interests.includes(t);
+            return (
+              <Pressable key={t} style={[styles.cityChipSm, on && styles.cityOn]} onPress={() => toggleInterest(t)}>
+                <Text style={[styles.cityTxtSm, on && { color: '#fff' }]}>{t}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
         <Pressable style={styles.saveBtn} onPress={save}><Text style={styles.saveBtnTxt}>{saving ? 'Enregistrement…' : 'Enregistrer'}</Text></Pressable>
         <View style={{ height: 30 }} />

@@ -274,17 +274,15 @@ const todayStr = () => new Date().toISOString().slice(0, 10);
 // Les profils démo (u1..u12) mappent une photo Unsplash => considérés comme ayant une photo.
 function hasPhoto(u) { return !!(u && (u.photo || PHOTOS[u.id])); }
 
-// Profil complet : requis pour pouvoir passer Premium.
-const DEFAULT_BIO = 'Nouveau sur SenLove 👋';
+// Profil complet : requis pour pouvoir passer Premium. (Centres d'intérêt = facultatif, pas dans la liste.)
 function profileMissing(me) {
   const miss = [];
-  if (!me) return ['photo', 'prénom', 'genre', 'âge', 'localisation', 'bio'];
+  if (!me) return ['photo', 'prénom', 'genre', 'âge', 'localisation'];
   if (!me.photo) miss.push('photo');
   if (!me.name || me.name === 'Moi') miss.push('prénom');
   if (!me.gender) miss.push('genre');
   if (!me.age) miss.push('âge');
   if (!me.region && !me.city) miss.push('localisation');
-  if (!me.bio || me.bio === DEFAULT_BIO) miss.push('bio');
   return miss;
 }
 const profileComplete = (me) => profileMissing(me).length === 0;

@@ -25,9 +25,9 @@ export default function Account() {
   if (!state || !state.me) return <View style={styles.safe}><ProfileSkeleton /></View>;
 
   const me = state.me;
-  const hasBio = !!me.bio && me.bio !== 'Nouveau sur SenLove 👋';
+  const interests = Array.isArray(me.interests) ? me.interests : [];
   const genderLabel = me.gender ? GENDER[me.gender] : null;
-  const items = [!!me.photo, hasBio, !!me.phone, !!(me.city || me.region), !!me.age];
+  const items = [!!me.photo, me.name !== 'Moi', !!me.gender, !!me.age, !!(me.city || me.region)];
   const pct = Math.round((items.filter(Boolean).length / items.length) * 100);
 
   return (
@@ -102,10 +102,16 @@ export default function Account() {
           </Pressable>
         )}
 
-        {/* À propos */}
+        {/* Centres d'intérêt */}
         <View style={styles.card}>
-          <Text style={styles.cardH}>À propos</Text>
-          <Text style={hasBio ? styles.bio : styles.bioEmpty}>{hasBio ? me.bio : 'Ajoute une bio pour te démarquer 💬'}</Text>
+          <Text style={styles.cardH}>Centres d'intérêt</Text>
+          {interests.length ? (
+            <View style={styles.tags}>
+              {interests.map((t) => <View key={t} style={styles.tag}><Text style={styles.tagTxt}>{t}</Text></View>)}
+            </View>
+          ) : (
+            <Text style={styles.bioEmpty}>Ajoute tes centres d'intérêt pour matcher sur ce que tu aimes ✨</Text>
+          )}
         </View>
 
         {/* Publications */}
@@ -181,6 +187,9 @@ const styles = StyleSheet.create({
 
   bio: { color: theme.ink, fontSize: 15, lineHeight: 22 },
   bioEmpty: { color: theme.muted, fontSize: 15, fontStyle: 'italic' },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tag: { backgroundColor: theme.tint, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
+  tagTxt: { color: theme.primaryDark, fontWeight: '700', fontSize: 13 },
 
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   infoBorder: { borderBottomWidth: 1, borderBottomColor: theme.line },
