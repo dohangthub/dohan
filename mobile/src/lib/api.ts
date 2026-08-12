@@ -55,7 +55,8 @@ export type AppState = {
   icebreakers: string[];
 };
 
-export type ChatMsg = { from: 'me' | 'them'; text: string };
+export type ChatMsg = { from: 'me' | 'them'; text: string; kind?: 'text' | 'image' | 'audio'; media?: string | null };
+export type MessagesResp = { user: User; messages: ChatMsg[]; mediaUnlocked: boolean; mediaMin: number };
 
 export type Post = {
   id: string;
@@ -93,10 +94,12 @@ export const api = {
   state: (): Promise<AppState> => req('/api/state'),
   swipe: (targetId: string, action: 'like' | 'pass' | 'crush') =>
     req('/api/swipe', { method: 'POST', body: JSON.stringify({ targetId, action }) }),
-  messages: (matchId: string): Promise<{ user: User; messages: ChatMsg[] }> =>
+  messages: (matchId: string): Promise<MessagesResp> =>
     req(`/api/messages?matchId=${matchId}`),
-  send: (matchId: string, text: string): Promise<{ messages: ChatMsg[] }> =>
+  send: (matchId: string, text: string): Promise<{ messages: ChatMsg[]; mediaUnlocked: boolean }> =>
     req('/api/messages', { method: 'POST', body: JSON.stringify({ matchId, text }) }),
+  sendMedia: (matchId: string, kind: 'image' | 'audio', media: string, text?: string): Promise<{ ok?: boolean; error?: string; message?: string; messages?: ChatMsg[]; mediaUnlocked?: boolean }> =>
+    req('/api/messages', { method: 'POST', body: JSON.stringify({ matchId, kind, media, text }) }),
   premium: () => req('/api/premium', { method: 'POST', body: '{}' }),
   buyPass: (plan: 'day' | 'weekend' | 'week', method: string) =>
     req('/api/buy-pass', { method: 'POST', body: JSON.stringify({ plan, method }) }),
@@ -106,6 +109,8 @@ export const api = {
   payInit: (kind: 'pass' | 'credits', item: string, method: 'wave' | 'om', phone: string): Promise<{ ok: boolean; simulated?: boolean; payment_url?: string; state?: AppState }> =>
     req('/api/pay/init', { method: 'POST', body: JSON.stringify({ kind, item, method, phone }) }),
   feed: (): Promise<{ posts: Post[] }> => req('/api/feed'),
+  user: (id: string): Promise<{ user: User; posts: { id: string; kind: string; body: string; photo?: string | null; likes: number }[] }> =>
+    req(`/api/user?id=${id}`),
   createPost: (body: string, photo?: string | null) =>
     req('/api/post', { method: 'POST', body: JSON.stringify({ kind: photo ? 'photo' : 'text', body, photo }) }),
   likePost: (postId: string) =>

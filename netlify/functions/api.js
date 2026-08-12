@@ -93,6 +93,13 @@ function seekingOf(u) {
   if (u && u.gender === 'F') return 'H';
   return 'all';
 }
+const MEDIA_MIN_MSGS = 5;
+const mapMsg = (x) => ({ from: x.sender === ME ? 'me' : 'them', text: x.body || '', kind: x.kind || 'text', media: x.media_url || null });
+function mediaUnlocked(msgs) {
+  const mine = msgs.filter((x) => x.sender === ME).length;
+  const theirs = msgs.length - mine;
+  return mine >= 1 && theirs >= 1 && msgs.length >= MEDIA_MIN_MSGS;
+}
 function hasPhoto(u) { return !!(u && (u.photo || PHOTOS[u.id])); }
 function genderMatch(me, u) {
   if (!me || !u) return true;
@@ -279,17 +286,26 @@ exports.handler = async (event) => {
       if (!m) return J(404, { error: 'introuvable' });
       const [u] = await sb('GET', `profiles?id=eq.${m.user_b}&select=*`);
       const msgs = await sb('GET', `messages?match_id=eq.${q.matchId}&order=created_at.asc&select=*`);
-      return J(200, { user: pubUser(u), messages: msgs.map((x) => ({ from: x.sender === ME ? 'me' : 'them', text: x.body })) });
+      return J(200, { user: pubUser(u), messages: msgs.map(mapMsg), mediaUnlocked: mediaUnlocked(msgs), mediaMin: MEDIA_MIN_MSGS });
     }
     if (route === '/messages' && method === 'POST') {
       const [m] = await sb('GET', `matches?id=eq.${b.matchId}&select=*`);
       if (!m) return J(404, { error: 'introuvable' });
+      const kind = ['image', 'audio'].includes(b.kind) ? b.kind : 'text';
       const text = String(b.text || '').slice(0, 500).trim();
-      if (!text) return J(400, { error: 'vide' });
-      await sb('POST', 'messages', { match_id: m.id, sender: ME, body: text });
+      const media = String(b.media || '').slice(0, 400);
+      if (kind === 'text' && !text) return J(400, { error: 'vide' });
+      if (kind !== 'text') {
+        if (!media) return J(400, { error: 'média manquant' });
+        const existing = await sb('GET', `messages?match_id=eq.${m.id}&select=sender`);
+        if (!mediaUnlocked(existing)) return J(403, { error: 'locked', message: `Débloqué après ${MEDIA_MIN_MSGS} messages échangés.` });
+      }
+      const row = { match_id: m.id, sender: ME, body: text };
+      if (kind !== 'text') { row.kind = kind; row.media_url = media || null; }
+      await sb('POST', 'messages', row);
       await sb('POST', 'messages', { match_id: m.id, sender: m.user_b, body: pick(AUTOREPLIES) });
       const msgs = await sb('GET', `messages?match_id=eq.${m.id}&order=created_at.asc&select=*`);
-      return J(200, { ok: true, messages: msgs.map((x) => ({ from: x.sender === ME ? 'me' : 'them', text: x.body })) });
+      return J(200, { ok: true, messages: msgs.map(mapMsg), mediaUnlocked: mediaUnlocked(msgs) });
     }
 
     if (route === '/premium' && method === 'POST') { await sb('PATCH', `profiles?id=eq.${ME}`, { premium: true }); return J(200, { ok: true, state: await getState() }); }
@@ -371,6 +387,13 @@ exports.handler = async (event) => {
         createdAt: p.created_at,
       }));
       return J(200, { posts: out });
+    }
+    if (route === '/user' && method === 'GET') {
+      const [u] = await sb('GET', `profiles?id=eq.${q.id}&select=*`);
+      if (!u) return J(404, { error: 'introuvable' });
+      const posts = await sb('GET', `posts?author_id=eq.${q.id}&order=id.desc&select=*`);
+      const out = posts.map((p) => ({ id: String(p.id), kind: p.kind, body: p.body, photo: p.photo, likes: p.likes || 0 }));
+      return J(200, { user: pubUser(u), posts: out });
     }
     if (route === '/post' && method === 'POST') {
       const kind = b.kind === 'photo' ? 'photo' : 'text';

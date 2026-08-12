@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -16,47 +18,93 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '../../components/ui';
 import { ChatMsg, User, api } from '../../lib/api';
+import { pickImageDataUrl } from '../../lib/pickImage';
 import { theme } from '../../lib/theme';
+import { Recorder, startRecording, voiceSupported } from '../../lib/voice';
+
+const STARTERS = ['Salut 👋 ça va ?', 'Tu fais quoi ce weekend ?', 'On se capte autour d\'un café ? ☕', 'Raconte-moi un truc sur toi 😄'];
+
+function playAudio(url: string) {
+  if (Platform.OS === 'web' && typeof Audio !== 'undefined') {
+    try { const a = new Audio(url); a.play(); } catch {}
+  }
+}
 
 export default function Conversation() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [user, setUser] = useState<User | null>(null);
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
-  const [ices, setIces] = useState<string[]>([]);
   const [text, setText] = useState('');
   const [menu, setMenu] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [toast, setToast] = useState('');
+  const [unlocked, setUnlocked] = useState(false);
+  const [mediaMin, setMediaMin] = useState(5);
+  const [uploading, setUploading] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const recRef = useRef<Recorder | null>(null);
   const scroller = useRef<ScrollView>(null);
 
   const REASONS = ['Faux profil / arnaque', 'Photos inappropriées', 'Harcèlement / insultes', 'Spam / pub', 'Autre'];
+  const flash = (t: string) => { setToast(t); setTimeout(() => setToast(''), 2600); };
+  const scrollDown = () => setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 60);
 
-  async function doBlock() {
-    setMenu(false);
-    if (user) await api.block(user.id);
-    router.back();
-  }
+  async function doBlock() { setMenu(false); if (user) await api.block(user.id); router.back(); }
   async function doReport(reason: string) {
     setReportOpen(false);
     if (user) await api.report(user.id, reason);
-    setToast('Merci, signalement envoyé. Notre équipe va vérifier.');
-    setTimeout(() => setToast(''), 2600);
+    flash('Merci, signalement envoyé. Notre équipe va vérifier.');
   }
 
   useEffect(() => {
     if (!id) return;
-    api.messages(id).then((d) => { setUser(d.user); setMsgs(d.messages); });
-    api.state().then((s) => setIces(s.icebreakers));
+    api.messages(id).then((d) => { setUser(d.user); setMsgs(d.messages); setUnlocked(d.mediaUnlocked); setMediaMin(d.mediaMin || 5); });
   }, [id]);
 
   async function send() {
     const t = text.trim();
     if (!t || !id) return;
     setText('');
-    setMsgs((m) => [...m, { from: 'me', text: t }]);
+    setMsgs((m) => [...m, { from: 'me', text: t, kind: 'text' }]);
     const res = await api.send(id, t);
     if (res?.messages) setMsgs(res.messages);
-    setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 60);
+    if (typeof res?.mediaUnlocked === 'boolean') setUnlocked(res.mediaUnlocked);
+    scrollDown();
+  }
+
+  async function sendMedia(kind: 'image' | 'audio', dataUrl: string) {
+    if (!id) return;
+    setUploading(true);
+    try {
+      const up = await api.upload(dataUrl);
+      if (!up?.url) { flash('Échec de l\'envoi, réessaie.'); return; }
+      const res = await api.sendMedia(id, kind, up.url);
+      if (res?.error === 'locked') { flash(res.message || 'Pas encore débloqué.'); return; }
+      if (res?.messages) setMsgs(res.messages);
+      if (typeof res?.mediaUnlocked === 'boolean') setUnlocked(res.mediaUnlocked);
+      scrollDown();
+    } catch { flash('Échec de l\'envoi, réessaie.'); }
+    finally { setUploading(false); }
+  }
+
+  async function onPickImage() {
+    if (!unlocked) { flash(`📸 Photos & vocaux débloqués après ${mediaMin} messages échangés.`); return; }
+    const dataUrl = await pickImageDataUrl();
+    if (dataUrl) await sendMedia('image', dataUrl);
+  }
+
+  async function onMicPress() {
+    if (!unlocked) { flash(`🎤 Photos & vocaux débloqués après ${mediaMin} messages échangés.`); return; }
+    if (recording) {
+      const rec = recRef.current; recRef.current = null; setRecording(false);
+      const dataUrl = rec ? await rec.stop() : null;
+      if (dataUrl) await sendMedia('audio', dataUrl);
+      return;
+    }
+    if (!voiceSupported()) { flash('Micro non dispo sur cet appareil (bientôt sur l\'app mobile).'); return; }
+    const rec = await startRecording();
+    if (!rec) { flash('Micro refusé. Autorise l\'accès au micro.'); return; }
+    recRef.current = rec; setRecording(true);
   }
 
   return (
@@ -67,13 +115,13 @@ export default function Conversation() {
           <Ionicons name="chevron-back" size={26} color={theme.primary} />
         </Pressable>
         {user ? (
-          <View style={styles.peer}>
+          <Pressable style={styles.peer} onPress={() => router.push(`/u/${user.id}`)}>
             <Avatar user={user} size={42} />
             <View>
               <Text style={styles.peerName}>{user.name}, {user.age}</Text>
-              <Text style={styles.peerCity}>📍 {user.city || user.region}</Text>
+              <Text style={styles.peerCity}>📍 {user.city || user.region} · voir le profil</Text>
             </View>
-          </View>
+          </Pressable>
         ) : null}
         <Pressable style={styles.moreBtn} hitSlop={8} onPress={() => setMenu(true)}>
           <Ionicons name="ellipsis-horizontal" size={22} color={theme.ink} />
@@ -86,43 +134,88 @@ export default function Conversation() {
           contentContainerStyle={styles.body}
           onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: false })}
         >
-          {msgs.length === 0 ? (
-            <View style={[styles.bubble, styles.them]}>
-              <Text style={styles.themText}>Vous avez matché ! 🎉 Lance la conversation 👇</Text>
-            </View>
-          ) : (
-            msgs.map((m, i) => (
-              <View key={i} style={[styles.bubble, m.from === 'me' ? styles.me : styles.them]}>
-                <Text style={m.from === 'me' ? styles.meText : styles.themText}>{m.text}</Text>
+          <View style={[styles.bubble, styles.them]}>
+            <Text style={styles.themText}>Vous avez matché ! 🎉 Lance la conversation 👇</Text>
+          </View>
+          {msgs.map((m, i) => {
+            const mine = m.from === 'me';
+            if (m.kind === 'image' && m.media) {
+              return (
+                <View key={i} style={[styles.mediaBubble, mine ? styles.meAlign : styles.themAlign]}>
+                  <Image source={{ uri: m.media }} style={styles.msgImg} resizeMode="cover" />
+                </View>
+              );
+            }
+            if (m.kind === 'audio' && m.media) {
+              return (
+                <Pressable key={i} onPress={() => playAudio(m.media!)} style={[styles.bubble, styles.audioBubble, mine ? styles.me : styles.them]}>
+                  <Ionicons name="play" size={16} color={mine ? '#fff' : theme.primary} />
+                  <View style={styles.waveRow}>
+                    {[10, 16, 8, 20, 12, 18, 9].map((h, k) => (
+                      <View key={k} style={[styles.waveBar, { height: h, backgroundColor: mine ? 'rgba(255,255,255,0.75)' : theme.primary }]} />
+                    ))}
+                  </View>
+                  <Text style={mine ? styles.meText : styles.themText}>vocal</Text>
+                </Pressable>
+              );
+            }
+            return (
+              <View key={i} style={[styles.bubble, mine ? styles.me : styles.them]}>
+                <Text style={mine ? styles.meText : styles.themText}>{m.text}</Text>
               </View>
-            ))
-          )}
+            );
+          })}
         </ScrollView>
 
-        {/* Icebreakers */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.iceRow}>
-          {ices.map((t) => (
-            <Pressable key={t} style={styles.ice} onPress={() => setText(t)}>
-              <Text style={styles.iceText}>{t}</Text>
+        {/* Suggestions de démarrage (uniquement au début) */}
+        {msgs.length === 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.starterRow}>
+            {STARTERS.map((t) => (
+              <Pressable key={t} style={styles.starter} onPress={() => setText(t)}>
+                <Text style={styles.starterText}>{t}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        ) : null}
+
+        {/* Bandeau verrou média */}
+        {!unlocked ? (
+          <View style={styles.lockBar}>
+            <Ionicons name="lock-closed" size={13} color={theme.muted} />
+            <Text style={styles.lockTxt}>Photos & vocaux débloqués après {mediaMin} messages échangés</Text>
+          </View>
+        ) : null}
+
+        {/* Barre d'envoi en enregistrement */}
+        {recording ? (
+          <View style={styles.recBar}>
+            <View style={styles.recDot} />
+            <Text style={styles.recTxt}>Enregistrement… relâche pour envoyer</Text>
+            <Pressable style={styles.recStop} onPress={onMicPress}><Ionicons name="stop" size={18} color="#fff" /></Pressable>
+          </View>
+        ) : (
+          <View style={styles.inputRow}>
+            <Pressable style={styles.iconBtn} onPress={onPickImage} disabled={uploading}>
+              <Ionicons name="image-outline" size={22} color={unlocked ? theme.primary : theme.muted} />
             </Pressable>
-          ))}
-        </ScrollView>
-
-        {/* Input */}
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.input}
-            value={text}
-            onChangeText={setText}
-            placeholder="Écris un message..."
-            placeholderTextColor="#C3BCC7"
-            onSubmitEditing={send}
-            returnKeyType="send"
-          />
-          <Pressable style={styles.sendBtn} onPress={send}>
-            <Ionicons name="send" size={18} color="#fff" />
-          </Pressable>
-        </View>
+            <TextInput
+              style={styles.input}
+              value={text}
+              onChangeText={setText}
+              placeholder="Écris un message..."
+              placeholderTextColor="#C3BCC7"
+              onSubmitEditing={send}
+              returnKeyType="send"
+            />
+            {text.trim() ? (
+              <Pressable style={styles.sendBtn} onPress={send}><Ionicons name="send" size={18} color="#fff" /></Pressable>
+            ) : uploading ? (
+              <View style={styles.sendBtn}><ActivityIndicator color="#fff" size="small" /></View>
+            ) : (
+              <Pressable style={styles.sendBtn} onPress={onMicPress}><Ionicons name="mic" size={20} color="#fff" /></Pressable>
+            )}
+          </View>
+        )}
       </KeyboardAvoidingView>
 
       {/* Menu actions */}
@@ -185,11 +278,28 @@ const styles = StyleSheet.create({
   themText: { color: theme.ink, fontSize: 15 },
   meText: { color: '#fff', fontSize: 15 },
 
-  iceRow: { gap: 8, paddingHorizontal: 12, paddingVertical: 8 },
-  ice: { backgroundColor: '#fff', borderWidth: 1, borderColor: theme.line, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
-  iceText: { fontSize: 12, color: theme.ink },
+  meAlign: { alignSelf: 'flex-end' },
+  themAlign: { alignSelf: 'flex-start' },
+  mediaBubble: { maxWidth: '70%', borderRadius: 18, overflow: 'hidden' },
+  msgImg: { width: 200, height: 200, borderRadius: 18, backgroundColor: theme.line },
+  audioBubble: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 150 },
+  waveRow: { flexDirection: 'row', alignItems: 'center', gap: 3, flex: 1 },
+  waveBar: { width: 3, borderRadius: 2 },
+
+  starterRow: { gap: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  starter: { backgroundColor: theme.tint, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 },
+  starterText: { fontSize: 13, color: theme.primaryDark, fontWeight: '700' },
+
+  lockBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6, backgroundColor: theme.bg },
+  lockTxt: { color: theme.muted, fontSize: 11.5, fontWeight: '600' },
+
+  recBar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: theme.line, backgroundColor: '#fff' },
+  recDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: theme.danger },
+  recTxt: { flex: 1, color: theme.ink, fontWeight: '700', fontSize: 14 },
+  recStop: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.danger, alignItems: 'center', justifyContent: 'center' },
 
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: theme.line, backgroundColor: '#fff' },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   input: { flex: 1, borderWidth: 1, borderColor: theme.line, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, color: theme.ink },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center' },
 
