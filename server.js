@@ -241,12 +241,29 @@ function seekingOf(u) {
 }
 // ---------- Messages : types + déblocage média/vocal après N échanges ----------
 const MEDIA_MIN_MSGS = 5; // vocaux & médias débloqués après 5 messages échangés (les deux ayant parlé)
-const mapMsg = (x) => ({ from: x.sender === ME ? 'me' : 'them', text: x.body || '', kind: x.kind || 'text', media: x.media_url || null });
+const FREE_DAILY_MSGS = 15; // messages/jour en gratuit ; illimité en Premium
+
+// Masque les numéros de téléphone (7+ chiffres) pour pousser au Premium (anti "on se donne le numéro et on quitte l'app").
+function maskPhones(text) {
+  if (!text) return text;
+  return String(text).replace(/(\+?\d[\d\s.\-]{5,}\d)/g, (m) => {
+    const digits = (m.match(/\d/g) || []).length;
+    return digits >= 7 ? '📵 numéro masqué — passe Premium pour le voir' : m;
+  });
+}
+const mapMsg = (x, mask) => ({
+  from: x.sender === ME ? 'me' : 'them',
+  text: mask ? maskPhones(x.body || '') : (x.body || ''),
+  kind: x.kind || 'text',
+  media: x.media_url || null,
+});
 function mediaUnlocked(msgs) {
   const mine = msgs.filter((x) => x.sender === ME).length;
   const theirs = msgs.length - mine;
   return mine >= 1 && theirs >= 1 && msgs.length >= MEDIA_MIN_MSGS;
 }
+const isPremium = (me) => !!(me && (me.premium || (me.premium_until && new Date(me.premium_until).getTime() > Date.now())));
+const todayStr = () => new Date().toISOString().slice(0, 10);
 
 // Une photo réelle est requise pour apparaître dans l'accueil (anti "photo de chien/matelas" niveau 1).
 // Les profils démo (u1..u12) mappent une photo Unsplash => considérés comme ayant une photo.
@@ -487,12 +504,16 @@ async function api(req, res, url) {
     const [m] = await sb('GET', `matches?id=eq.${id}&select=*`);
     if (!m) return json(res, 404, { error: 'introuvable' });
     const [u] = await sb('GET', `profiles?id=eq.${m.user_b}&select=*`);
+    const [me] = await sb('GET', `profiles?id=eq.${ME}&select=*`);
+    const prem = isPremium(me);
     const msgs = await sb('GET', `messages?match_id=eq.${id}&order=created_at.asc&select=*`);
+    const usedToday = me && me.msgs_date === todayStr() ? (me.msgs_used || 0) : 0;
     return json(res, 200, {
       user: pubUser(u),
-      messages: msgs.map(mapMsg),
+      messages: msgs.map((x) => mapMsg(x, !prem)),
       mediaUnlocked: mediaUnlocked(msgs),
       mediaMin: MEDIA_MIN_MSGS,
+      msgsLeft: prem ? null : Math.max(0, FREE_DAILY_MSGS - usedToday),
     });
   }
 
@@ -511,15 +532,27 @@ async function api(req, res, url) {
         return json(res, 403, { error: 'locked', message: `Débloqué après ${MEDIA_MIN_MSGS} messages échangés.` });
       }
     }
+    // Limite de messages/jour en gratuit
+    const [me] = await sb('GET', `profiles?id=eq.${ME}&select=*`);
+    const prem = isPremium(me);
+    if (!prem) {
+      const usedToday = me && me.msgs_date === todayStr() ? (me.msgs_used || 0) : 0;
+      if (usedToday >= FREE_DAILY_MSGS) {
+        return json(res, 402, { error: 'msg_limit', message: `Tu as atteint ${FREE_DAILY_MSGS} messages aujourd'hui. Passe Premium pour discuter sans limite.` });
+      }
+      try { await sb('PATCH', `profiles?id=eq.${ME}`, { msgs_used: usedToday + 1, msgs_date: todayStr() }); } catch {} // no-op tant que la migration msgs_* n'est pas lancée
+    }
     const row = { match_id: m.id, sender: ME, body: text };
     if (kind !== 'text') { row.kind = kind; row.media_url = media || null; } // colonnes requises seulement pour les médias
     await sb('POST', 'messages', row);
     await sb('POST', 'messages', { match_id: m.id, sender: m.user_b, body: pick(AUTOREPLIES) });
     const msgs = await sb('GET', `messages?match_id=eq.${m.id}&order=created_at.asc&select=*`);
+    const usedNow = prem ? 0 : ((me && me.msgs_date === todayStr() ? (me.msgs_used || 0) : 0) + 1);
     return json(res, 200, {
       ok: true,
-      messages: msgs.map(mapMsg),
+      messages: msgs.map((x) => mapMsg(x, !prem)),
       mediaUnlocked: mediaUnlocked(msgs),
+      msgsLeft: prem ? null : Math.max(0, FREE_DAILY_MSGS - usedNow),
     });
   }
 

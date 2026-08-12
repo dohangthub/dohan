@@ -40,6 +40,7 @@ export default function Conversation() {
   const [toast, setToast] = useState('');
   const [unlocked, setUnlocked] = useState(false);
   const [mediaMin, setMediaMin] = useState(5);
+  const [msgsLeft, setMsgsLeft] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [recording, setRecording] = useState(false);
   const recRef = useRef<Recorder | null>(null);
@@ -58,17 +59,20 @@ export default function Conversation() {
 
   useEffect(() => {
     if (!id) return;
-    api.messages(id).then((d) => { setUser(d.user); setMsgs(d.messages); setUnlocked(d.mediaUnlocked); setMediaMin(d.mediaMin || 5); });
+    api.messages(id).then((d) => { setUser(d.user); setMsgs(d.messages); setUnlocked(d.mediaUnlocked); setMediaMin(d.mediaMin || 5); setMsgsLeft(d.msgsLeft); });
   }, [id]);
 
   async function send() {
     const t = text.trim();
     if (!t || !id) return;
+    if (msgsLeft === 0) { flash('Limite de messages du jour atteinte — passe Premium.'); router.push('/store'); return; }
     setText('');
     setMsgs((m) => [...m, { from: 'me', text: t, kind: 'text' }]);
     const res = await api.send(id, t);
+    if (res?.error === 'msg_limit') { flash(res.message || 'Limite atteinte.'); setMsgsLeft(0); router.push('/store'); return; }
     if (res?.messages) setMsgs(res.messages);
     if (typeof res?.mediaUnlocked === 'boolean') setUnlocked(res.mediaUnlocked);
+    if (res?.msgsLeft !== undefined) setMsgsLeft(res.msgsLeft);
     scrollDown();
   }
 
@@ -80,8 +84,10 @@ export default function Conversation() {
       if (!up?.url) { flash('Échec de l\'envoi, réessaie.'); return; }
       const res = await api.sendMedia(id, kind, up.url);
       if (res?.error === 'locked') { flash(res.message || 'Pas encore débloqué.'); return; }
+      if (res?.error === 'msg_limit') { flash(res.message || 'Limite atteinte.'); setMsgsLeft(0); router.push('/store'); return; }
       if (res?.messages) setMsgs(res.messages);
       if (typeof res?.mediaUnlocked === 'boolean') setUnlocked(res.mediaUnlocked);
+      if (res?.msgsLeft !== undefined) setMsgsLeft(res.msgsLeft);
       scrollDown();
     } catch { flash('Échec de l\'envoi, réessaie.'); }
     finally { setUploading(false); }
@@ -184,6 +190,17 @@ export default function Conversation() {
             <Ionicons name="lock-closed" size={13} color={theme.muted} />
             <Text style={styles.lockTxt}>Photos & vocaux débloqués après {mediaMin} messages échangés</Text>
           </View>
+        ) : null}
+
+        {/* Compteur de messages gratuits (bas) */}
+        {msgsLeft !== null && msgsLeft <= 5 ? (
+          <Pressable style={styles.msgLeftBar} onPress={() => router.push('/store')}>
+            <Ionicons name="chatbubble-ellipses" size={13} color={theme.gold} />
+            <Text style={styles.msgLeftTxt}>
+              {msgsLeft === 0 ? 'Limite du jour atteinte — ' : `Il te reste ${msgsLeft} message${msgsLeft > 1 ? 's' : ''} aujourd'hui · `}
+              <Text style={{ fontWeight: '900', color: theme.primary }}>Premium = illimité</Text>
+            </Text>
+          </Pressable>
         ) : null}
 
         {/* Barre d'envoi en enregistrement */}
@@ -292,6 +309,8 @@ const styles = StyleSheet.create({
 
   lockBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6, backgroundColor: theme.bg },
   lockTxt: { color: theme.muted, fontSize: 11.5, fontWeight: '600' },
+  msgLeftBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 12, backgroundColor: '#FFF3E9' },
+  msgLeftTxt: { color: '#C25A18', fontSize: 12, fontWeight: '700' },
 
   recBar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: theme.line, backgroundColor: '#fff' },
   recDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: theme.danger },

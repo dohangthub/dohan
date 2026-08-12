@@ -59,7 +59,7 @@ export type AppState = {
 };
 
 export type ChatMsg = { from: 'me' | 'them'; text: string; kind?: 'text' | 'image' | 'audio'; media?: string | null };
-export type MessagesResp = { user: User; messages: ChatMsg[]; mediaUnlocked: boolean; mediaMin: number };
+export type MessagesResp = { user: User; messages: ChatMsg[]; mediaUnlocked: boolean; mediaMin: number; msgsLeft: number | null };
 
 export type Post = {
   id: string;
@@ -99,9 +99,9 @@ export const api = {
     req('/api/swipe', { method: 'POST', body: JSON.stringify({ targetId, action }) }),
   messages: (matchId: string): Promise<MessagesResp> =>
     req(`/api/messages?matchId=${matchId}`),
-  send: (matchId: string, text: string): Promise<{ messages: ChatMsg[]; mediaUnlocked: boolean }> =>
+  send: (matchId: string, text: string): Promise<{ error?: string; message?: string; messages?: ChatMsg[]; mediaUnlocked?: boolean; msgsLeft?: number | null }> =>
     req('/api/messages', { method: 'POST', body: JSON.stringify({ matchId, text }) }),
-  sendMedia: (matchId: string, kind: 'image' | 'audio', media: string, text?: string): Promise<{ ok?: boolean; error?: string; message?: string; messages?: ChatMsg[]; mediaUnlocked?: boolean }> =>
+  sendMedia: (matchId: string, kind: 'image' | 'audio', media: string, text?: string): Promise<{ ok?: boolean; error?: string; message?: string; messages?: ChatMsg[]; mediaUnlocked?: boolean; msgsLeft?: number | null }> =>
     req('/api/messages', { method: 'POST', body: JSON.stringify({ matchId, kind, media, text }) }),
   premium: () => req('/api/premium', { method: 'POST', body: '{}' }),
   buyPass: (plan: 'day' | 'weekend' | 'week', method: string) =>
