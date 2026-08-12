@@ -10,6 +10,12 @@
   to = "/.netlify/functions/api/:splat"
   status = 200
 
+# /admin -> back-office (avant le fallback SPA)
+[[redirects]]
+  from = "/admin"
+  to = "/.netlify/functions/admin"
+  status = 200
+
 # Routage SPA : le reste retombe sur l'app
 [[redirects]]
   from = "/*"

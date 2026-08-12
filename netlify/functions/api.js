@@ -167,11 +167,11 @@ async function getState() {
   const swipeMap = {}; swipes.forEach((s) => (swipeMap[s.target_id] = s.action));
   const blocked = (me && me.blocked) || [];
   const deck = cands
-    .filter((u) => !swipeMap[u.id] && !blocked.includes(u.id) && genderMatch(me, u) && hasPhoto(u))
+    .filter((u) => !swipeMap[u.id] && !blocked.includes(u.id) && !u.banned && genderMatch(me, u) && hasPhoto(u))
     .map((u) => ({ u, sc: deckScore(u, me) }))
     .sort((a, b) => b.sc - a.sc || (a.u.seq || 0) - (b.u.seq || 0))
     .map((x) => pubUser(x.u));
-  const likedYou = cands.filter((u) => u.likes_me && swipeMap[u.id] !== 'pass' && !blocked.includes(u.id) && genderMatch(me, u));
+  const likedYou = cands.filter((u) => u.likes_me && swipeMap[u.id] !== 'pass' && !blocked.includes(u.id) && !u.banned && genderMatch(me, u));
   const matchesRaw = await sb('GET', `matches?user_a=eq.${ME}&order=id.asc&select=*`);
   let msgsByMatch = {};
   if (matchesRaw.length) {

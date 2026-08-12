@@ -26,6 +26,7 @@ const WEB_DIST = path.join(__dirname, 'mobile', 'dist');
 const PUBLIC = fs.existsSync(path.join(WEB_DIST, 'index.html')) ? WEB_DIST : path.join(__dirname, 'public');
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SECRET_KEY;
+const { handle: adminHandle } = require('./admin.js'); // back-office (env déjà chargé ci-dessus)
 const ME = 'me';
 const FREE_DAILY_LIKES = 5;
 
@@ -330,11 +331,11 @@ async function getState() {
   const blocked = (me && me.blocked) || [];
 
   const deck = cands
-    .filter((u) => !swipeMap[u.id] && !blocked.includes(u.id) && genderMatch(me, u) && hasPhoto(u))
+    .filter((u) => !swipeMap[u.id] && !blocked.includes(u.id) && !u.banned && genderMatch(me, u) && hasPhoto(u))
     .map((u) => ({ u, sc: deckScore(u, me) }))
     .sort((a, b) => b.sc - a.sc || (a.u.seq || 0) - (b.u.seq || 0))
     .map((x) => pubUser(x.u));
-  const likedYou = cands.filter((u) => u.likes_me && swipeMap[u.id] !== 'pass' && !blocked.includes(u.id) && genderMatch(me, u));
+  const likedYou = cands.filter((u) => u.likes_me && swipeMap[u.id] !== 'pass' && !blocked.includes(u.id) && !u.banned && genderMatch(me, u));
 
   const matchesRaw = await sb('GET', `matches?user_a=eq.${ME}&order=id.asc&select=*`);
   let msgsByMatch = {};
@@ -838,6 +839,13 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
 
   const url = new URL(req.url, `http://localhost:${PORT}`);
+  if (url.pathname === '/admin') {
+    const query = Object.fromEntries(url.searchParams);
+    const body = ['POST', 'PATCH', 'DELETE'].includes(req.method) ? await readBody(req) : '';
+    const r = await adminHandle(req.method, query, typeof body === 'string' ? body : JSON.stringify(body));
+    res.writeHead(r.status, r.headers);
+    return res.end(r.body);
+  }
   if (url.pathname.startsWith('/api/')) {
     try { return await api(req, res, url); }
     catch (e) {
