@@ -47,19 +47,34 @@ export default function Likes() {
       </View>
 
       <ScrollView contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
-        {premium
-          ? people.map((u) => <RealTile key={u.id} user={u} />)
-          : Array.from({ length: Math.max(count, 4) }).map((_, i) => <LockedTile key={i} />)}
-        {!premium ? (
-          <View style={styles.lockCta}>
-            <Ionicons name="diamond" size={30} color={theme.primary} />
-            <Text style={styles.lockTitle}>{count} personnes t'ont liké</Text>
-            <Text style={styles.lockSub}>Passe en Premium pour voir qui craque pour toi.</Text>
-            <Pressable style={styles.unlockBtn} onPress={() => router.push('/store')}>
-              <Text style={styles.unlockText}>Voir la boutique</Text>
+        {count === 0 ? (
+          <View style={styles.empty}>
+            <Ionicons name="heart-outline" size={40} color={theme.primary} />
+            <Text style={styles.lockTitle}>Personne ne t'a encore liké</Text>
+            <Text style={styles.lockSub}>Continue à swiper — plus tu es actif, plus tu reçois de likes.</Text>
+            <Pressable style={styles.unlockBtn} onPress={() => router.push('/')}>
+              <Text style={styles.unlockText}>Aller swiper</Text>
             </Pressable>
           </View>
-        ) : null}
+        ) : premium ? (
+          people.map((u) => <RealTile key={u.id} user={u} />)
+        ) : (
+          <>
+            {Array.from({ length: Math.min(Math.max(count, 2), 6) }).map((_, i) => <LockedTile key={i} />)}
+            <View style={styles.lockCta}>
+              <View style={styles.lockIconWrap}><Ionicons name="lock-closed" size={22} color="#fff" /></View>
+              <Text style={styles.lockTitle}>{count} personne{count > 1 ? 's' : ''} t'{count > 1 ? 'ont' : 'a'} liké 💜</Text>
+              <Text style={styles.lockSub}>
+                Ces profils sont floutés car c'est réservé à Premium. Avec Premium, tu vois qui c'est et tu peux matcher tout de suite.
+              </Text>
+              <Pressable style={styles.unlockBtn} onPress={() => router.push('/store')}>
+                <Ionicons name="diamond" size={16} color="#fff" />
+                <Text style={styles.unlockText}>Voir qui m'a liké · Premium</Text>
+              </Pressable>
+              <Text style={styles.lockFrom}>À partir de 1 000 F</Text>
+            </View>
+          </>
+        )}
         <View style={{ height: 20 }} />
       </ScrollView>
     </SafeAreaView>
@@ -112,11 +127,14 @@ const styles = StyleSheet.create({
   lockIcon: { position: 'absolute', alignSelf: 'center', top: '30%' },
   blurBar: { position: 'absolute', bottom: 12, left: 10, width: '55%', height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.5)' },
 
-  lockCta: { width: '100%', backgroundColor: '#fff', borderRadius: 20, padding: 22, alignItems: 'center', gap: 6, marginTop: 4, ...shadow },
-  lockTitle: { fontSize: 17, fontWeight: '800', color: theme.ink },
-  lockSub: { color: theme.muted, textAlign: 'center' },
-  unlockBtn: { backgroundColor: theme.primary, paddingHorizontal: 26, paddingVertical: 12, borderRadius: 14, marginTop: 8 },
+  empty: { width: '100%', backgroundColor: '#fff', borderRadius: 20, padding: 26, alignItems: 'center', gap: 8, marginTop: 4, ...shadow },
+  lockCta: { width: '100%', backgroundColor: '#fff', borderRadius: 20, padding: 22, alignItems: 'center', gap: 6, marginTop: 12, ...shadow },
+  lockIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  lockTitle: { fontSize: 17, fontWeight: '800', color: theme.ink, textAlign: 'center' },
+  lockSub: { color: theme.muted, textAlign: 'center', lineHeight: 20, fontSize: 13.5 },
+  unlockBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.primary, paddingHorizontal: 24, paddingVertical: 13, borderRadius: 14, marginTop: 10 },
   unlockText: { color: '#fff', fontWeight: '800' },
+  lockFrom: { color: theme.muted, fontSize: 12, fontWeight: '700', marginTop: 6 },
 
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(20,8,18,0.5)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, gap: 8, maxHeight: '88%' },

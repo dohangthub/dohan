@@ -23,7 +23,7 @@ export default function Home() {
   async function onSwipe(u: User, action: 'like' | 'pass' | 'crush') {
     const res = await api.swipe(u.id, action);
     if (res?.error === 'limit') {
-      router.push('/likes');
+      router.push('/store');
       return;
     }
     if (res?.state) setState(res.state);

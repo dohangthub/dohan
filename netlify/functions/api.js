@@ -166,7 +166,7 @@ async function getState() {
   };
 }
 const PASS_DAYS = { day: 1, week: 7, month: 30 };
-const PASS_PRICES = { day: 300, week: 1000, month: 3000 };
+const PASS_PRICES = { day: 1000, week: 3000, month: 8000 };
 const BOOST_PRICE = 300;
 const CREDIT_PACKS = { small: 500, medium: 1000, large: 2000 };
 const BOOST_COST = 200;

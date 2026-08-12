@@ -78,21 +78,29 @@ export default function Account() {
           </Pressable>
         ) : null}
 
-        {/* Premium & Boost */}
-        <View style={styles.card}>
-          <View style={styles.premTop}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardH}>{state.premium ? '👑 Premium actif' : 'Passe en Premium'}</Text>
-              <Text style={styles.premSub}>Vois qui t'a liké · likes illimités</Text>
+        {/* Premium — une seule carte claire */}
+        {state.premium ? (
+          <View style={styles.card}>
+            <View style={styles.premTop}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardH}>👑 Premium actif</Text>
+                <Text style={styles.premSub}>Likes illimités · tu vois qui t'a liké · profil mis en avant</Text>
+              </View>
+              <Pressable style={styles.premBtn} onPress={() => router.push('/store')}><Text style={styles.premBtnTxt}>Gérer</Text></Pressable>
             </View>
-            <Pressable style={styles.premBtn} onPress={() => router.push('/store')}><Text style={styles.premBtnTxt}>{state.premium ? 'Gérer' : 'Découvrir'}</Text></Pressable>
           </View>
-          <Pressable style={styles.boostRow} onPress={() => router.push('/store')}>
-            <Ionicons name="rocket" size={16} color={theme.primary} />
-            <Text style={styles.boostTxt}>{state.boostActive ? 'Boost actif ✓' : 'Booster mon profil · 300 FCFA'}</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.muted} />
+        ) : (
+          <Pressable onPress={() => router.push('/store')}>
+            <LinearGradient colors={theme.pinkGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.premCta}>
+              <View style={styles.premCtaIcon}><Ionicons name="diamond" size={20} color="#fff" /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.premCtaTitle}>Passe Premium</Text>
+                <Text style={styles.premCtaSub}>Vois qui t'a liké · likes illimités · profil boosté</Text>
+              </View>
+              <View style={styles.premCtaBtn}><Text style={styles.premCtaBtnTxt}>Voir</Text></View>
+            </LinearGradient>
           </Pressable>
-        </View>
+        )}
 
         {/* À propos */}
         <View style={styles.card}>
@@ -164,8 +172,12 @@ const styles = StyleSheet.create({
   premSub: { color: theme.muted, fontSize: 12, marginTop: 2 },
   premBtn: { backgroundColor: theme.primary, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 999 },
   premBtnTxt: { color: '#fff', fontWeight: '800', fontSize: 13 },
-  boostRow: { flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: theme.line, paddingTop: 12, marginTop: 4 },
-  boostTxt: { flex: 1, color: theme.ink, fontWeight: '700', fontSize: 14 },
+  premCta: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, padding: 16, ...shadow },
+  premCtaIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' },
+  premCtaTitle: { color: '#fff', fontWeight: '900', fontSize: 16 },
+  premCtaSub: { color: 'rgba(255,255,255,0.95)', fontSize: 12, marginTop: 2, fontWeight: '600' },
+  premCtaBtn: { backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 9, borderRadius: 999 },
+  premCtaBtnTxt: { color: theme.primary, fontWeight: '900', fontSize: 13 },
 
   bio: { color: theme.ink, fontSize: 15, lineHeight: 22 },
   bioEmpty: { color: theme.muted, fontSize: 15, fontStyle: 'italic' },
