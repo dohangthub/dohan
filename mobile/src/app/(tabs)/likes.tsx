@@ -6,22 +6,19 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GridSkeleton } from '../../components/Skeleton';
-import { Chip, PremiumPill, ScreenTitle } from '../../components/ui';
+import { ScreenTitle } from '../../components/ui';
 import { AppState, User, api, kmAway, photoUrl } from '../../lib/api';
 import { shadow, theme } from '../../lib/theme';
 
-const TABS = ['Tous', 'Récents', 'Proches'];
-
 export default function Likes() {
   const [state, setState] = useState<AppState | null>(null);
-  const [tab, setTab] = useState(0);
 
   const load = useCallback(() => { api.state().then(setState).catch(() => {}); }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   if (!state) return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.pad}><ScreenTitle title="Like You" /></View>
+      <View style={styles.pad}><ScreenTitle title="Qui t'a liké" /></View>
       <GridSkeleton />
     </SafeAreaView>
   );
@@ -32,46 +29,42 @@ export default function Likes() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.pad}>
-        <ScreenTitle
-          title="Like You"
-          right={<Pressable onPress={() => router.push('/store')}><PremiumPill /></Pressable>}
-        />
-        <View style={styles.tabs}>
-          {TABS.map((t, i) => (
-            <Pressable key={t} onPress={() => setTab(i)}>
-              <Chip label={`${t}${i === 0 ? ' ' + count : ''}`} active={tab === i} />
-            </Pressable>
-          ))}
-        </View>
-      </View>
+      <View style={styles.pad}><ScreenTitle title="Qui t'a liké" /></View>
 
-      <ScrollView contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
         {count === 0 ? (
-          <View style={styles.empty}>
-            <Ionicons name="heart-outline" size={40} color={theme.primary} />
-            <Text style={styles.lockTitle}>Personne ne t'a encore liké</Text>
-            <Text style={styles.lockSub}>Continue à swiper — plus tu es actif, plus tu reçois de likes.</Text>
-            <Pressable style={styles.unlockBtn} onPress={() => router.push('/')}>
-              <Text style={styles.unlockText}>Aller swiper</Text>
+          <View style={styles.card}>
+            <Ionicons name="heart-outline" size={42} color={theme.primary} />
+            <Text style={styles.cardTitle}>Personne ne t'a encore liké</Text>
+            <Text style={styles.cardSub}>Ici tu verras les personnes qui ont flashé sur toi. Continue à swiper — plus tu es actif, plus tu reçois de likes.</Text>
+            <Pressable style={styles.cta} onPress={() => router.push('/')}>
+              <Ionicons name="flame" size={16} color="#fff" />
+              <Text style={styles.ctaTxt}>Aller swiper</Text>
             </Pressable>
           </View>
         ) : premium ? (
-          people.map((u) => <RealTile key={u.id} user={u} />)
+          <>
+            <Text style={styles.intro}>{count} personne{count > 1 ? 's' : ''} {count > 1 ? 'ont' : 'a'} flashé sur toi 💜 Like en retour = match direct.</Text>
+            <View style={styles.grid}>{people.map((u) => <RealTile key={u.id} user={u} />)}</View>
+          </>
         ) : (
           <>
-            {Array.from({ length: Math.min(Math.max(count, 2), 6) }).map((_, i) => <LockedTile key={i} />)}
-            <View style={styles.lockCta}>
-              <View style={styles.lockIconWrap}><Ionicons name="lock-closed" size={22} color="#fff" /></View>
-              <Text style={styles.lockTitle}>{count} personne{count > 1 ? 's' : ''} t'{count > 1 ? 'ont' : 'a'} liké 💜</Text>
-              <Text style={styles.lockSub}>
-                Ces profils sont floutés car c'est réservé à Premium. Avec Premium, tu vois qui c'est et tu peux matcher tout de suite.
-              </Text>
-              <Pressable style={styles.unlockBtn} onPress={() => router.push('/store')}>
-                <Ionicons name="diamond" size={16} color="#fff" />
-                <Text style={styles.unlockText}>Voir qui m'a liké · Premium</Text>
+            {/* Explication + CTA EN HAUT */}
+            <LinearGradient colors={theme.pinkGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+              <View style={styles.heroIcon}><Ionicons name="heart" size={26} color="#fff" /></View>
+              <Text style={styles.heroCount}>{count} personne{count > 1 ? 's' : ''} t'{count > 1 ? 'ont' : 'a'} liké</Text>
+              <Text style={styles.heroSub}>Quelqu'un a flashé sur toi ! Passe en Premium pour voir qui c'est et matcher tout de suite.</Text>
+              <Pressable style={styles.heroCta} onPress={() => router.push('/store')}>
+                <Ionicons name="diamond" size={16} color={theme.primary} />
+                <Text style={styles.heroCtaTxt}>Voir qui m'a liké</Text>
               </Pressable>
-              <Text style={styles.lockFrom}>À partir de 1 000 F</Text>
+              <Text style={styles.heroFrom}>Premium à partir de 1 000 F</Text>
+            </LinearGradient>
+
+            {/* Aperçu flouté */}
+            <Text style={styles.teaser}>Aperçu — flouté tant que tu n'es pas Premium</Text>
+            <View style={styles.grid}>
+              {Array.from({ length: Math.min(Math.max(count, 2), 6) }).map((_, i) => <LockedTile key={i} />)}
             </View>
           </>
         )}
@@ -85,7 +78,7 @@ function RealTile({ user }: { user: User }) {
   const [err, setErr] = useState(false);
   const uri = photoUrl(user, 400, 520);
   return (
-    <View style={styles.tile}>
+    <Pressable style={styles.tile} onPress={() => router.push(`/u/${user.id}`)}>
       {uri && !err ? (
         <Image source={{ uri }} onError={() => setErr(true)} resizeMode="cover" style={StyleSheet.absoluteFill} />
       ) : (
@@ -99,7 +92,7 @@ function RealTile({ user }: { user: User }) {
         <Text style={styles.tileName}>{user.name}, {user.age}</Text>
         <Text style={styles.tileMeta}>{kmAway(user.id)} km</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -116,9 +109,26 @@ function LockedTile() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.bg },
   pad: { paddingHorizontal: 18, paddingTop: 8 },
-  tabs: { flexDirection: 'row', gap: 8, marginBottom: 6 },
+  wrap: { paddingHorizontal: 18, paddingTop: 6, gap: 12 },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12, paddingHorizontal: 18, paddingTop: 8 },
+  hero: { borderRadius: 22, padding: 22, alignItems: 'center', gap: 6, ...shadow },
+  heroIcon: { width: 54, height: 54, borderRadius: 27, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  heroCount: { color: '#fff', fontWeight: '900', fontSize: 21, textAlign: 'center' },
+  heroSub: { color: 'rgba(255,255,255,0.95)', fontSize: 14, textAlign: 'center', lineHeight: 20, fontWeight: '600' },
+  heroCta: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', paddingHorizontal: 26, paddingVertical: 13, borderRadius: 14, marginTop: 10 },
+  heroCtaTxt: { color: theme.primary, fontWeight: '900', fontSize: 15 },
+  heroFrom: { color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: '700', marginTop: 4 },
+
+  intro: { color: theme.ink, fontSize: 14, fontWeight: '600', lineHeight: 20 },
+  teaser: { color: theme.muted, fontSize: 12.5, fontWeight: '700', marginTop: 4 },
+
+  card: { backgroundColor: '#fff', borderRadius: 20, padding: 26, alignItems: 'center', gap: 8, marginTop: 6, ...shadow },
+  cardTitle: { fontSize: 18, fontWeight: '800', color: theme.ink, textAlign: 'center' },
+  cardSub: { color: theme.muted, textAlign: 'center', lineHeight: 20, fontSize: 13.5 },
+  cta: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.primary, paddingHorizontal: 26, paddingVertical: 13, borderRadius: 14, marginTop: 8 },
+  ctaTxt: { color: '#fff', fontWeight: '800' },
+
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 },
   tile: { width: '48%', aspectRatio: 3 / 4, borderRadius: 18, overflow: 'hidden', justifyContent: 'flex-end', ...shadow },
   tileEmoji: { position: 'absolute', alignSelf: 'center', top: '24%', fontSize: 60 },
   tileInfo: { padding: 10 },
@@ -126,35 +136,4 @@ const styles = StyleSheet.create({
   tileMeta: { color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: '600' },
   lockIcon: { position: 'absolute', alignSelf: 'center', top: '30%' },
   blurBar: { position: 'absolute', bottom: 12, left: 10, width: '55%', height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.5)' },
-
-  empty: { width: '100%', backgroundColor: '#fff', borderRadius: 20, padding: 26, alignItems: 'center', gap: 8, marginTop: 4, ...shadow },
-  lockCta: { width: '100%', backgroundColor: '#fff', borderRadius: 20, padding: 22, alignItems: 'center', gap: 6, marginTop: 12, ...shadow },
-  lockIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
-  lockTitle: { fontSize: 17, fontWeight: '800', color: theme.ink, textAlign: 'center' },
-  lockSub: { color: theme.muted, textAlign: 'center', lineHeight: 20, fontSize: 13.5 },
-  unlockBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.primary, paddingHorizontal: 24, paddingVertical: 13, borderRadius: 14, marginTop: 10 },
-  unlockText: { color: '#fff', fontWeight: '800' },
-  lockFrom: { color: theme.muted, fontSize: 12, fontWeight: '700', marginTop: 6 },
-
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(20,8,18,0.5)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, gap: 8, maxHeight: '88%' },
-  storeSection: { fontSize: 13, fontWeight: '800', color: theme.ink, marginTop: 16, marginBottom: 8 },
-  buyRow: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1.5, borderColor: theme.line, borderRadius: 14, padding: 14, marginBottom: 8 },
-  buyRowBest: { borderColor: theme.primary, backgroundColor: theme.tint },
-  buyLabel: { fontWeight: '800', color: theme.ink, fontSize: 15 },
-  buySub: { color: theme.muted, fontSize: 12, marginTop: 2 },
-  buyPrice: { fontWeight: '800', color: theme.primary, fontSize: 15 },
-  sheetX: { position: 'absolute', top: 16, right: 18, zIndex: 2 },
-  sheetIcon: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
-  sheetTitle: { fontSize: 22, fontWeight: '800', color: theme.ink, textAlign: 'center', marginBottom: 4 },
-  feat: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  featText: { fontSize: 15, color: theme.ink, fontWeight: '600' },
-  payLabel: { color: theme.muted, fontWeight: '700', marginTop: 8, fontSize: 12 },
-  payRow: { flexDirection: 'row', gap: 8 },
-  pay: { flex: 1, borderWidth: 2, borderColor: theme.line, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
-  paySel: { borderColor: theme.primary, backgroundColor: '#F1EBFF' },
-  payText: { fontWeight: '800', fontSize: 12, color: theme.ink },
-  cta: { backgroundColor: theme.primary, borderRadius: 16, paddingVertical: 15, alignItems: 'center', marginTop: 10 },
-  ctaText: { color: '#fff', fontWeight: '800', fontSize: 15 },
-  demoNote: { textAlign: 'center', color: theme.muted, fontSize: 11 },
 });

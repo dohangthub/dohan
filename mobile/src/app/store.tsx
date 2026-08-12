@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { OrangeMoneyLogo, WaveLogo } from '../components/PayLogos';
 import { AppState, api } from '../lib/api';
 import { shadow, shadowSoft, theme } from '../lib/theme';
 
@@ -107,11 +108,14 @@ export default function Store() {
             {/* PAIEMENT */}
             <Text style={styles.section}>Payer avec</Text>
             <View style={styles.payRow}>
-              {['Wave', 'Orange Money'].map((m) => (
-                <Pressable key={m} style={[styles.pay, pay === m && styles.paySel]} onPress={() => setPay(m)}>
-                  <Text style={[styles.payTxt, pay === m && { color: theme.primary }]}>{m}</Text>
-                </Pressable>
-              ))}
+              <Pressable style={[styles.pay, pay === 'Wave' && styles.paySel]} onPress={() => setPay('Wave')}>
+                <WaveLogo size={26} />
+                <Text style={[styles.payTxt, pay === 'Wave' && { color: theme.primary }]}>Wave</Text>
+              </Pressable>
+              <Pressable style={[styles.pay, pay === 'Orange Money' && styles.paySel]} onPress={() => setPay('Orange Money')}>
+                <OrangeMoneyLogo size={26} />
+                <Text style={[styles.payTxt, pay === 'Orange Money' && { color: theme.primary }]}>Orange Money</Text>
+              </Pressable>
             </View>
 
             {/* CTA UNIQUE */}
@@ -165,9 +169,9 @@ const styles = StyleSheet.create({
   planPrice: { fontWeight: '900', color: theme.ink, fontSize: 18 },
 
   payRow: { flexDirection: 'row', gap: 10 },
-  pay: { flex: 1, borderWidth: 2, borderColor: theme.line, borderRadius: 14, paddingVertical: 13, alignItems: 'center' },
+  pay: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, borderWidth: 2, borderColor: theme.line, borderRadius: 14, paddingVertical: 12 },
   paySel: { borderColor: theme.primary, backgroundColor: theme.tint },
-  payTxt: { fontWeight: '800', color: theme.ink },
+  payTxt: { fontWeight: '800', color: theme.ink, fontSize: 14 },
 
   cta: { backgroundColor: theme.primary, borderRadius: 16, paddingVertical: 17, alignItems: 'center', marginTop: 14, ...shadow },
   ctaTxt: { color: '#fff', fontWeight: '900', fontSize: 16 },
