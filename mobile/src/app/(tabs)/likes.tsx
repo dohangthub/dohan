@@ -12,9 +12,23 @@ import { shadow, theme } from '../../lib/theme';
 
 export default function Likes() {
   const [state, setState] = useState<AppState | null>(null);
+  const [opening, setOpening] = useState('');
 
   const load = useCallback(() => { api.state().then(setState).catch(() => {}); }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  // Cliquer sur quelqu'un qui t'a liké = tu likes en retour -> match instantané -> conversation directe.
+  async function startConversation(userId: string) {
+    if (opening) return;
+    setOpening(userId);
+    try {
+      const res = await api.swipe(userId, 'like');
+      const m = res?.state?.matches?.find((x: any) => x.user.id === userId);
+      if (m) { router.push(`/chat/${m.id}`); return; }
+      router.push(`/u/${userId}`); // repli
+    } catch { router.push(`/u/${userId}`); }
+    finally { setOpening(''); }
+  }
 
   if (!state) return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -44,8 +58,8 @@ export default function Likes() {
           </View>
         ) : premium ? (
           <>
-            <Text style={styles.intro}>{count} personne{count > 1 ? 's' : ''} {count > 1 ? 'ont' : 'a'} flashé sur toi 💜 Like en retour = match direct.</Text>
-            <View style={styles.grid}>{people.map((u) => <RealTile key={u.id} user={u} />)}</View>
+            <Text style={styles.intro}>{count} personne{count > 1 ? 's' : ''} {count > 1 ? 'ont' : 'a'} flashé sur toi 💜 Appuie pour discuter direct.</Text>
+            <View style={styles.grid}>{people.map((u) => <RealTile key={u.id} user={u} busy={opening === u.id} onPress={() => startConversation(u.id)} />)}</View>
           </>
         ) : (
           <>
@@ -74,11 +88,11 @@ export default function Likes() {
   );
 }
 
-function RealTile({ user }: { user: User }) {
+function RealTile({ user, busy, onPress }: { user: User; busy?: boolean; onPress: () => void }) {
   const [err, setErr] = useState(false);
   const uri = photoUrl(user, 400, 520);
   return (
-    <Pressable style={styles.tile} onPress={() => router.push(`/u/${user.id}`)}>
+    <Pressable style={styles.tile} onPress={onPress}>
       {uri && !err ? (
         <Image source={{ uri }} onError={() => setErr(true)} resizeMode="cover" style={StyleSheet.absoluteFill} />
       ) : (
@@ -88,9 +102,13 @@ function RealTile({ user }: { user: User }) {
         </>
       )}
       <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)']} style={StyleSheet.absoluteFill} />
+      <View style={styles.likedBadge}><Ionicons name="heart" size={11} color="#fff" /><Text style={styles.likedBadgeTxt}>T'a liké</Text></View>
       <View style={styles.tileInfo}>
         <Text style={styles.tileName}>{user.name}, {user.age}</Text>
-        <Text style={styles.tileMeta}>{kmAway(user.id)} km</Text>
+        <View style={styles.tileCta}>
+          <Ionicons name="chatbubble" size={11} color="#fff" />
+          <Text style={styles.tileMeta}>{busy ? 'Ouverture…' : 'Discuter'}</Text>
+        </View>
       </View>
     </Pressable>
   );
@@ -133,7 +151,10 @@ const styles = StyleSheet.create({
   tileEmoji: { position: 'absolute', alignSelf: 'center', top: '24%', fontSize: 60 },
   tileInfo: { padding: 10 },
   tileName: { color: '#fff', fontWeight: '800', fontSize: 14 },
-  tileMeta: { color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: '600' },
+  tileMeta: { color: 'rgba(255,255,255,0.95)', fontSize: 11, fontWeight: '700' },
+  tileCta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  likedBadge: { position: 'absolute', top: 8, left: 8, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: theme.primary, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  likedBadgeTxt: { color: '#fff', fontSize: 10, fontWeight: '900' },
   lockIcon: { position: 'absolute', alignSelf: 'center', top: '30%' },
   blurBar: { position: 'absolute', bottom: 12, left: 10, width: '55%', height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.5)' },
 });

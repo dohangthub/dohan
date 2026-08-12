@@ -41,6 +41,7 @@ export default function Conversation() {
   const [unlocked, setUnlocked] = useState(false);
   const [mediaMin, setMediaMin] = useState(5);
   const [msgsLeft, setMsgsLeft] = useState<number | null>(null);
+  const [theyLikedYou, setTheyLikedYou] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [recording, setRecording] = useState(false);
   const recRef = useRef<Recorder | null>(null);
@@ -59,7 +60,7 @@ export default function Conversation() {
 
   useEffect(() => {
     if (!id) return;
-    api.messages(id).then((d) => { setUser(d.user); setMsgs(d.messages); setUnlocked(d.mediaUnlocked); setMediaMin(d.mediaMin || 5); setMsgsLeft(d.msgsLeft); });
+    api.messages(id).then((d) => { setUser(d.user); setMsgs(d.messages); setUnlocked(d.mediaUnlocked); setMediaMin(d.mediaMin || 5); setMsgsLeft(d.msgsLeft); setTheyLikedYou(!!d.theyLikedYou); });
   }, [id]);
 
   async function send() {
@@ -140,6 +141,12 @@ export default function Conversation() {
           contentContainerStyle={styles.body}
           onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: false })}
         >
+          {theyLikedYou ? (
+            <View style={styles.likedNote}>
+              <Ionicons name="heart" size={13} color={theme.primary} />
+              <Text style={styles.likedNoteTxt}>{user?.name} t'a liké — foncez, l'intérêt est déjà là 💜</Text>
+            </View>
+          ) : null}
           <View style={[styles.bubble, styles.them]}>
             <Text style={styles.themText}>Vous avez matché ! 🎉 Lance la conversation 👇</Text>
           </View>
@@ -289,6 +296,8 @@ const styles = StyleSheet.create({
   peerCity: { color: theme.muted, fontSize: 12 },
 
   body: { padding: 16, gap: 8 },
+  likedNote: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, alignSelf: 'center', backgroundColor: theme.tint, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7, marginBottom: 4 },
+  likedNoteTxt: { color: theme.primaryDark, fontWeight: '800', fontSize: 12.5 },
   bubble: { maxWidth: '78%', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18 },
   them: { alignSelf: 'flex-start', backgroundColor: '#fff', borderBottomLeftRadius: 5 },
   me: { alignSelf: 'flex-end', backgroundColor: theme.primary, borderBottomRightRadius: 5 },

@@ -59,7 +59,7 @@ export type AppState = {
 };
 
 export type ChatMsg = { from: 'me' | 'them'; text: string; kind?: 'text' | 'image' | 'audio'; media?: string | null };
-export type MessagesResp = { user: User; messages: ChatMsg[]; mediaUnlocked: boolean; mediaMin: number; msgsLeft: number | null };
+export type MessagesResp = { user: User; messages: ChatMsg[]; mediaUnlocked: boolean; mediaMin: number; msgsLeft: number | null; theyLikedYou?: boolean };
 
 export type Post = {
   id: string;

@@ -517,6 +517,7 @@ async function api(req, res, url) {
       mediaUnlocked: mediaUnlocked(msgs),
       mediaMin: MEDIA_MIN_MSGS,
       msgsLeft: prem ? null : Math.max(0, FREE_DAILY_MSGS - usedToday),
+      theyLikedYou: !!u.likes_me,
     });
   }
 
@@ -765,12 +766,15 @@ async function api(req, res, url) {
     const b = await readBody(req);
     const [u] = await sb('GET', `profiles?id=eq.${b.authorId}&select=id`);
     if (!u) return json(res, 404, { error: 'introuvable' });
-    // Contrôle des DM du destinataire
+    // Exception : si JE l'ai déjà liké, le contact passe direct (je veux clairement lui parler).
+    const myLike = await sb('GET', `swipes?actor_id=eq.${ME}&target_id=eq.${b.authorId}&action=in.(like,crush)&select=action`);
+    const iLikedThem = myLike.length > 0;
+    // Sinon, on applique les règles DM du destinataire.
     const policy = policyOf(b.authorId);
-    if (policy === 'verified' && !meState.verified) {
+    if (!iLikedThem && policy === 'verified' && !meState.verified) {
       return json(res, 200, { ok: false, status: 'verified_only' });
     }
-    if (policy === 'requests') {
+    if (!iLikedThem && policy === 'requests') {
       return json(res, 200, { ok: true, status: 'pending' });
     }
     let ex = await sb('GET', `matches?user_a=eq.${ME}&user_b=eq.${b.authorId}&select=id`);

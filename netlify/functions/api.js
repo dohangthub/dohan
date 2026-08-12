@@ -324,7 +324,7 @@ exports.handler = async (event) => {
       const prem = isPremium(me);
       const msgs = await sb('GET', `messages?match_id=eq.${q.matchId}&order=created_at.asc&select=*`);
       const usedToday = me && me.msgs_date === todayStr() ? (me.msgs_used || 0) : 0;
-      return J(200, { user: pubUser(u), messages: msgs.map((x) => mapMsg(x, !prem)), mediaUnlocked: mediaUnlocked(msgs), mediaMin: MEDIA_MIN_MSGS, msgsLeft: prem ? null : Math.max(0, FREE_DAILY_MSGS - usedToday) });
+      return J(200, { user: pubUser(u), messages: msgs.map((x) => mapMsg(x, !prem)), mediaUnlocked: mediaUnlocked(msgs), mediaMin: MEDIA_MIN_MSGS, msgsLeft: prem ? null : Math.max(0, FREE_DAILY_MSGS - usedToday), theyLikedYou: !!u.likes_me });
     }
     if (route === '/messages' && method === 'POST') {
       const [m] = await sb('GET', `matches?id=eq.${b.matchId}&select=*`);
@@ -519,9 +519,11 @@ exports.handler = async (event) => {
       const [u] = await sb('GET', `profiles?id=eq.${b.authorId}&select=id`);
       if (!u) return J(404, { error: 'introuvable' });
       const [me] = await sb('GET', `profiles?id=eq.${ME}&select=verified`);
+      const myLike = await sb('GET', `swipes?actor_id=eq.${ME}&target_id=eq.${b.authorId}&action=in.(like,crush)&select=action`);
+      const iLikedThem = myLike.length > 0; // si je l'ai déjà liké -> contact direct
       const policy = policyOf(b.authorId);
-      if (policy === 'verified' && !(me && me.verified)) return J(200, { ok: false, status: 'verified_only' });
-      if (policy === 'requests') return J(200, { ok: true, status: 'pending' });
+      if (!iLikedThem && policy === 'verified' && !(me && me.verified)) return J(200, { ok: false, status: 'verified_only' });
+      if (!iLikedThem && policy === 'requests') return J(200, { ok: true, status: 'pending' });
       let ex = await sb('GET', `matches?user_a=eq.${ME}&user_b=eq.${b.authorId}&select=id`);
       if (!ex.length) {
         await sb('POST', 'matches?on_conflict=user_a,user_b', { user_a: ME, user_b: b.authorId }, 'resolution=merge-duplicates');
