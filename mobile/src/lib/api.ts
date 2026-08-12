@@ -144,6 +144,12 @@ export const api = {
   dm: (authorId: string): Promise<{ ok: boolean; status: 'open' | 'pending' | 'verified_only'; matchId?: string }> =>
     req('/api/dm', { method: 'POST', body: JSON.stringify({ authorId }) }),
   verify: () => req('/api/verify', { method: 'POST', body: '{}' }),
+  block: (target: string): Promise<{ ok: boolean; state?: AppState }> =>
+    req('/api/block', { method: 'POST', body: JSON.stringify({ target }) }),
+  unblock: (target: string): Promise<{ ok: boolean; state?: AppState }> =>
+    req('/api/unblock', { method: 'POST', body: JSON.stringify({ target }) }),
+  report: (target: string, reason?: string): Promise<{ ok: boolean }> =>
+    req('/api/report', { method: 'POST', body: JSON.stringify({ target, reason }) }),
   saveProfile: (p: Partial<User>) =>
     req('/api/profile', { method: 'POST', body: JSON.stringify(p) }),
   reset: () => req('/api/reset', { method: 'POST', body: '{}' }),

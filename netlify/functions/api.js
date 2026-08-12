@@ -124,12 +124,13 @@ async function getState() {
   const cands = await sb('GET', 'profiles?is_me=eq.false&order=seq.asc&select=*');
   const swipes = await sb('GET', `swipes?actor_id=eq.${ME}&select=target_id,action`);
   const swipeMap = {}; swipes.forEach((s) => (swipeMap[s.target_id] = s.action));
+  const blocked = (me && me.blocked) || [];
   const deck = cands
-    .filter((u) => !swipeMap[u.id] && genderMatch(me, u) && hasPhoto(u))
+    .filter((u) => !swipeMap[u.id] && !blocked.includes(u.id) && genderMatch(me, u) && hasPhoto(u))
     .map((u) => ({ u, sc: deckScore(u, me) }))
     .sort((a, b) => b.sc - a.sc || (a.u.seq || 0) - (b.u.seq || 0))
     .map((x) => pubUser(x.u));
-  const likedYou = cands.filter((u) => u.likes_me && swipeMap[u.id] !== 'pass' && genderMatch(me, u));
+  const likedYou = cands.filter((u) => u.likes_me && swipeMap[u.id] !== 'pass' && !blocked.includes(u.id) && genderMatch(me, u));
   const matchesRaw = await sb('GET', `matches?user_a=eq.${ME}&order=id.asc&select=*`);
   let msgsByMatch = {};
   if (matchesRaw.length) {
@@ -137,12 +138,14 @@ async function getState() {
     const msgs = await sb('GET', `messages?match_id=in.(${ids})&order=created_at.asc&select=*`);
     msgs.forEach((m) => { (msgsByMatch[m.match_id] = msgsByMatch[m.match_id] || []).push(m); });
   }
-  const matches = matchesRaw.map((m) => {
-    const u = cands.find((c) => c.id === m.user_b) || {};
-    const list = msgsByMatch[m.id] || [];
-    const last = list[list.length - 1];
-    return { id: String(m.id), user: pubUser(u), lastMessage: last ? last.body : null, count: list.length };
-  });
+  const matches = matchesRaw
+    .filter((m) => !blocked.includes(m.user_b))
+    .map((m) => {
+      const u = cands.find((c) => c.id === m.user_b) || {};
+      const list = msgsByMatch[m.id] || [];
+      const last = list[list.length - 1];
+      return { id: String(m.id), user: pubUser(u), lastMessage: last ? last.body : null, count: list.length };
+    });
   const now = Date.now();
   const passActive = !!(me && me.premium_until && new Date(me.premium_until).getTime() > now);
   const premium = !!(me && (me.premium || passActive));
@@ -228,6 +231,26 @@ exports.handler = async (event) => {
       if (b.dmPolicy && ['everyone', 'verified', 'requests'].includes(b.dmPolicy)) patch.dm_policy = b.dmPolicy;
       if (Object.keys(patch).length) await sb('PATCH', `profiles?id=eq.${ME}`, patch);
       return J(200, { ok: true, state: await getState() });
+    }
+
+    if ((route === '/block' || route === '/unblock') && method === 'POST') {
+      const target = String(b.target || b.targetId || '');
+      if (target) {
+        const [me] = await sb('GET', `profiles?id=eq.${ME}&select=blocked`);
+        const cur = (me && me.blocked) || [];
+        const next = route === '/block'
+          ? (cur.includes(target) ? cur : [...cur, target])
+          : cur.filter((x) => x !== target);
+        await sb('PATCH', `profiles?id=eq.${ME}`, { blocked: next });
+      }
+      return J(200, { ok: true, state: await getState() });
+    }
+
+    if (route === '/report' && method === 'POST') {
+      const target = String(b.target || b.targetId || '');
+      const reason = String(b.reason || '').slice(0, 300);
+      if (target) await sb('POST', 'reports', { reporter: ME, target, reason });
+      return J(200, { ok: true });
     }
 
     if (route === '/swipe' && method === 'POST') {

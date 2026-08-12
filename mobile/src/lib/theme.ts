@@ -13,6 +13,7 @@ export const theme = {
   chip: '#F2EEFA',
   gold: '#FF8A5B',
   success: '#38C793',
+  danger: '#E5484D',
   radius: 26,
   radiusSm: 16,
 };

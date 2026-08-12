@@ -290,12 +290,14 @@ async function getState() {
     const msgs = await sb('GET', `messages?match_id=in.(${ids})&order=created_at.asc&select=*`);
     msgs.forEach((m) => { (msgsByMatch[m.match_id] = msgsByMatch[m.match_id] || []).push(m); });
   }
-  const matches = matchesRaw.map((m) => {
-    const u = cands.find((c) => c.id === m.user_b) || {};
-    const list = msgsByMatch[m.id] || [];
-    const last = list[list.length - 1];
-    return { id: String(m.id), user: pubUser(u), lastMessage: last ? last.body : null, count: list.length };
-  });
+  const matches = matchesRaw
+    .filter((m) => !blocked.includes(m.user_b))
+    .map((m) => {
+      const u = cands.find((c) => c.id === m.user_b) || {};
+      const list = msgsByMatch[m.id] || [];
+      const last = list[list.length - 1];
+      return { id: String(m.id), user: pubUser(u), lastMessage: last ? last.body : null, count: list.length };
+    });
 
   const now = Date.now();
   const passActive = !!(me && me.premium_until && new Date(me.premium_until).getTime() > now);
@@ -376,6 +378,36 @@ async function api(req, res, url) {
     if (b.dmPolicy && ['everyone', 'verified', 'requests'].includes(b.dmPolicy)) meState.dmPolicy = b.dmPolicy;
     if (Object.keys(patch).length) await sb('PATCH', `profiles?id=eq.${ME}`, patch);
     return json(res, 200, { ok: true, state: await getState() });
+  }
+
+  if (route === '/api/block' && req.method === 'POST') {
+    const b = await readBody(req);
+    const target = String(b.target || b.targetId || '');
+    if (target) {
+      const [me] = await sb('GET', `profiles?id=eq.${ME}&select=blocked`);
+      const cur = (me && me.blocked) || [];
+      if (!cur.includes(target)) await sb('PATCH', `profiles?id=eq.${ME}`, { blocked: [...cur, target] });
+    }
+    return json(res, 200, { ok: true, state: await getState() });
+  }
+
+  if (route === '/api/unblock' && req.method === 'POST') {
+    const b = await readBody(req);
+    const target = String(b.target || b.targetId || '');
+    if (target) {
+      const [me] = await sb('GET', `profiles?id=eq.${ME}&select=blocked`);
+      const cur = (me && me.blocked) || [];
+      await sb('PATCH', `profiles?id=eq.${ME}`, { blocked: cur.filter((x) => x !== target) });
+    }
+    return json(res, 200, { ok: true, state: await getState() });
+  }
+
+  if (route === '/api/report' && req.method === 'POST') {
+    const b = await readBody(req);
+    const target = String(b.target || b.targetId || '');
+    const reason = String(b.reason || '').slice(0, 300);
+    if (target) await sb('POST', 'reports', { reporter: ME, target, reason });
+    return json(res, 200, { ok: true });
   }
 
   if (route === '/api/swipe' && req.method === 'POST') {
